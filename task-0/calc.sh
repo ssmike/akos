@@ -8,3 +8,5 @@ do
 done;
 
 echo random order; ./main -r -n $N
+
+make clean
