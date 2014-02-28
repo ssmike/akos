@@ -26,16 +26,15 @@ int fgetss_(FILE * fin, char ** res, int lim) {
            buf = realloc(buf, allsz * 2 * sizeof(char));
            allsz *= 2;
        }
-       if (buf == NULL) {
-           return ALLOCATION_FAILED;
-       }
+       if (buf == NULL)  return ALLOCATION_FAILED;
        buf[sz++] = cchar;
     }
     if (sz >= lim) {
         *res = buf;
-        return -sz;
+        return LIMIT_EXCEEDED;
     }
     buf = realloc(buf, (sz + 1) * sizeof(char));
+    if (buf == NULL)  return ALLOCATION_FAILED;
     buf[sz] = '\0';
     *res = buf;
     return sz;

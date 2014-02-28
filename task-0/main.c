@@ -17,7 +17,7 @@ int main(int argc, char ** argv) {
     int i;
     for (i = 0; i < argc; i++) {
         if (argc != 0 && strcmp("-n", argv[argc - 1]) == 0) {
-            
+            sscanf(argv[i], "%d", &n);
         }
         if (strcmp("-r", argv[argc - 1]) == 0) {
             

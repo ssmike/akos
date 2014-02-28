@@ -6,8 +6,9 @@
  * TODO: add windows support
  * all functions return negative values on errors
  */
-#define ALLOCATION_FAILED (-1e+9)
-#define EOF_ERROR (-1e+9+1)
+#define ALLOCATION_FAILED (-1)
+#define EOF_ERROR (-2)
+#define LIMIT_EXCEEDED (-3)
 
 int getss(char ** res);
 int getss_(char ** res, int lim);
