@@ -4,5 +4,3 @@ all: clean
 	gcc $(CFLAGS) ./main.c -o ./main -g
 clean:
 	rm -f ./main
-run: all
-	./main
