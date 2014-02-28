@@ -14,6 +14,9 @@ int fgetss(FILE * fin, char ** res) {
 }
 
 int fgetss_(FILE * fin, char ** res, int lim) {
+    if (feof(stdin)) {
+        return EOF_ERROR;
+    }
     int sz = 0;
     int allsz = 1;
     char * buf = malloc(sizeof(char));
@@ -23,8 +26,8 @@ int fgetss_(FILE * fin, char ** res, int lim) {
            buf = realloc(buf, allsz * 2 * sizeof(char));
            allsz *= 2;
        }
-       if (buf == 0) {
-           return -1e+9;
+       if (buf == NULL) {
+           return ALLOCATION_FAILED;
        }
        buf[sz++] = cchar;
     }
