@@ -1,13 +1,9 @@
 client: clean libs
-	rm -f client
 	gcc -L$(PWD) -lgetss client.c -o client -Wl,-rpath=$(PWD)
 
 clean:
-	rm -f ./*.o
-	rm -f ./*.so
-	rm -f ./client
-	rm -f ./client
-	rm -f ./*.a
+	rm -f ./*.o ./*.so ./client ./*.a
+
 run: client
 	./client
 
