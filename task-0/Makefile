@@ -1,8 +1,8 @@
-CFLAGS=-pedantic -ansi
+CFLAGS=-pedantic -ansi 
 
-all:
-	gcc $(CFLAGS) ./main.c -O2 -o ./main
+all: clean
+	gcc $(CFLAGS) ./main.c -o ./main -g
 clean:
 	rm -f ./main
-run:
+run: all
 	./main
