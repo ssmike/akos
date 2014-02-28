@@ -1,5 +1,5 @@
 Usage:
--stdin read from stdin if isn't set rand() is used
+-stdin read from stdin by default rand() is used
 -n size of int array
 -r random order
 -step step

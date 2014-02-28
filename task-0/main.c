@@ -60,11 +60,11 @@ int main(int argc, char ** argv) {
     int i, stp;
     bool rnd = false, bystep = false, fromstdin = false;
     clock_t start, finish;
-    for (i = 1; i <= argc; i++) {
+    for (i = 1; i < argc; i++) {
         if (argc != 0 && strcmp("-n", argv[i - 1]) == 0) {
             sscanf(argv[i], "%d", &n);
         }
-        if (strcmp("-r", argv[argc - 1]) == 0) {
+        if (strcmp("-r", argv[i - 1]) == 0) {
             rnd = true;
         }
         if (argc != 0 && strcmp("-step", argv[i - 1]) == 0) {
@@ -98,5 +98,5 @@ int main(int argc, char ** argv) {
     start = clock();
     sum();
     finish = clock();
-    printf("%.6fsec", ((double)(finish - start)) / CLOCKS_PER_SEC);
+    printf("%.6fsec\n", ((double)(finish - start)) / CLOCKS_PER_SEC);
 }
