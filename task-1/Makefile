@@ -1,5 +1,8 @@
+CFLAGS=-Wall -ansi -pedantic
+CC=gcc
+
 client: clean libs
-	gcc -L$(PWD) -lgetss client.c -o client -Wl,-rpath=$(PWD)
+	$(CC) -L$(PWD) -lgetss client.c -o client -Wl,-rpath=$(PWD) $(CFLAGS)
 
 clean:
 	rm -f ./*.o ./*.so ./client ./*.a
@@ -8,8 +11,8 @@ run: client
 	./client
 
 libs: objects
-	gcc -shared getss.o -o libgetss.so
+	$(CC) -shared getss.o -o libgetss.so
 	ar -rsc libgetss.a getss.o
 
 objects:
-	gcc -c -fPIC getss.c
+	$(CC) -c -fPIC getss.c $(CFLAGS)
