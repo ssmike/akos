@@ -1,0 +1,20 @@
+step 1
+0.110000sec
+step 4
+0.060000sec
+step 50
+0.280000sec
+step 17
+0.120000sec
+step 192
+0.210000sec
+step 1001
+0.320000sec
+step 2000
+0.180000sec
+step 2020
+0.310000sec
+step 2030
+0.290000sec
+random order
+0.350000sec
