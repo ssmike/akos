@@ -1,6 +1,12 @@
 #include "getss.h"
 #include <stdlib.h>
 
+/*TODO
+ * 
+ * Можно было бы и макросами сделать
+ * наверно.  
+ */
+
 int getss(char ** res) {
     return fgetss(stdin, res);
 }
