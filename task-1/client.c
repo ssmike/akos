@@ -4,7 +4,11 @@ int main() {
     char * s;
     int c = getss(&s);
     printf("%d \"%s\"\n", c, s);
-    getss(&s);
+    int code;
+    if ((code = getss(&s)) < 0) {
+        printf("%d\n", code);
+        return 0;
+    }
     printf("second line - \"%s\"\n", s);
     return 0; 
 }

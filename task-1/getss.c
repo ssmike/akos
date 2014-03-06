@@ -19,23 +19,30 @@ int fgetss(FILE * fin, char ** res) {
     return fgetss_(fin, res, GETSS_DEFAULT_LIM);
 }
 
+#ifdef __unix__
+#define line_end '\n'
+#else
+#define line_end '\r'
+#endif
+
 int fgetss_(FILE * fin, char ** res, int lim) {
+    *res = NULL;
+    int cchar;
+    int sz = 0;
+    int allsz = 1;
+    char * buf, * tmp;
     if (feof(stdin)) {
         return EOF_ERROR;
     }
-    *res = NULL;
-    int sz = 0;
-    int allsz = 1;
-    char * buf = malloc(sizeof(char)), * tmp;
+    buf = malloc(sizeof(char));
     if (buf == NULL) return ALLOCATION_FAILED;
-    int cchar;
-    while (sz < lim && (cchar = fgetc(fin)) != '\n'&& !feof(fin)) {
-        if (sz + 1 > allsz) {
+    while (sz < lim && (cchar = fgetc(fin)) != line_end && !feof(fin)) {
+        while (sz + 1 >= allsz) {
             tmp = realloc(buf, allsz * 2 * sizeof(char));
             if (tmp == NULL) {
                 *res = buf;
                 return ALLOCATION_FAILED;
-            }
+            } else buf = tmp;
             allsz *= 2;
         } 
         buf[sz++] = cchar;
@@ -44,12 +51,18 @@ int fgetss_(FILE * fin, char ** res, int lim) {
         *res = buf;
         return LIMIT_EXCEEDED;
     }
-    buf = realloc(buf, (sz + 1) * sizeof(char));
+    tmp = realloc(buf, (sz + 1) * sizeof(char));
     if (tmp == NULL) {
         *res = buf;
         return ALLOCATION_FAILED;
-    }
+    } else buf = tmp;
     buf[sz] = '\0';
     *res = buf;
+#ifndef __unix__
+    {
+        char tmp_char; 
+        while((tmp_char = fgetc(fin)) != '\n' && !feof(fin));
+    }
+#endif
     return sz;
 }

@@ -4,10 +4,6 @@
 #define GETSS_DEFAULT_LIM 10000
 
 #include <stdio.h>
-/*
- * TODO: add windows support
- * all functions return negative values on errors
- */
 #define ALLOCATION_FAILED (-1)
 #define EOF_ERROR (-2)
 #define LIMIT_EXCEEDED (-3)
