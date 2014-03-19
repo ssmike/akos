@@ -2,6 +2,8 @@
 #include <stdlib.h>
 #include <unistd.h>
 
+extern int getpagesize();
+
 int getss(char ** res) {
     return fgetss(stdin, res);
 }
