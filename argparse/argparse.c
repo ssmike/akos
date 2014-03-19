@@ -5,7 +5,7 @@
 #include <stdio.h>
 #include <errno.h>
 
-void increase(void ** arr, int * cur_sz, int * real_sz, int delta) {
+static void increase(void ** arr, int * cur_sz, int * real_sz, int delta) {
     void * tmp;
     assert(cur_sz == real_sz);
     *real_sz += delta;
@@ -19,14 +19,23 @@ void increase(void ** arr, int * cur_sz, int * real_sz, int delta) {
     *arr = tmp;
 }
 
-char ** parseCTokens(char * x) {
+static char ** parseCTokens(char * x, int * sz) {
     int i, n;
     n = strlen(x);
      
 }
 
-struct command * parse_command(char * x) { 
-    
+static struct command * parse_command(char * x) { 
+   int i, j, n = 0;
+   char ** tokens = parseCTokens(x, &n); 
+   struct command * res = (struct command *) malloc(sizeof(struct command));
+   if (res == NULL) {
+       errno = ENOMEM;
+       return NULL;
+   }
+   for (i = 0; i < n; i++) {
+       
+   }
 }
 
 struct job * parse(char * x) {
@@ -47,12 +56,23 @@ struct job * parse(char * x) {
     }
     for (i = n - 1; i >= 0 && x[i] != '&'; i--);
     res = (struct job*) malloc(sizeof(struct job));
+    if (res == NULL) {
+        free(commands);
+        return NULL;
+    }
     res->background = (i >= 0 && x[i] == '&');
     res->commandsc = cds_ss;
     res->commands = (struct command**)malloc(sizeof(struct command *) * cds_ss/sizeof(char *));
+    if (res->commands == NULL) {
+        errno = ENOMEM;
+        free(commands);
+        free(res);
+        return NULL;
+    }
     for (i = 0; i < cds_ss; i++) {
         increase((void**)&(res->commands), &rescdss, &rescdsr, sizeof(struct command *));
         if (errno != 0) {
+            errno = ENOMEM;
             free(commands);
             free(res->commands);
             free(res);

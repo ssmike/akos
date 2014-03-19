@@ -2,8 +2,6 @@
 #include <stdlib.h>
 #include <unistd.h>
 
-extern int getpagesize();
-
 int getss(char ** res) {
     return fgetss(stdin, res);
 }
@@ -17,12 +15,13 @@ int fgetss(FILE * fin, char ** res) {
 }
 
 int fgetss_(FILE * fin, char ** res, size_t lim) {
-    int cchar, psize;
+    int cchar;
+    long psize;
     size_t sz = 0;
     int allsz = sizeof(char);
     char * buf, * tmp;
     *res = NULL;
-    psize = getpagesize();
+    psize = sysconf(_SC_PAGESIZE);
     if (feof(stdin)) {
         return EOF_ERROR;
     }
