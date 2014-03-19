@@ -18,7 +18,7 @@ libs: deps
 	ar -rsc libargparse.a argparse.o
 
 deps:
-	bash ./compile-deps.sh
+	bash ./compile-deps.sh 2>/dev/null
 
 clean:
 	rm -f *.so
