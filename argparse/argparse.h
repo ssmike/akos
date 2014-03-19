@@ -5,20 +5,21 @@
 #include <stdbool.h>
 
 
-
 struct command{
-    LIST_ENTRY(command) cds;
-    char * fin, * fout;
+    char * input, * ouput;
     bool out_append;
-    char * c_s;   
+    char * name;
+    char ** args;
+    int argc;
 };
 
 struct job{
-    LIST_HEAD(command_list, command) cds; 
+    struct command ** commands; 
+    int commandsc;
     bool background;
 };
 
-struct job * parse_input();
-void print_job_desc();
+struct job * parse(char *);
+void print_job_desc(struct job *);
 
 #endif

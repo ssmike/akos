@@ -1,15 +1,19 @@
 SSP=$(PWD)/../task-1
 ARGS=$(PWD)/../argparse
 LDFLAGS=-L$(SSP) -L$(ARGS) -Wl,-rpath=$(SSP),-rpath=$(ARGS) -lgetss
-FLAGS= -pedantic -ansi -g -I$(SSP) -I$(ARGS)
+INCLUDE=-I$(SSP) -I$(ARGS)
+FLAGS= -pedantic -ansi -g $(INCLUDE)
 CC=gcc
 
 
 main: clean libs
 	$(CC) client.c -o main $(LDFLAGS) $(FLAGS)
 
+run:
+	./main
+
 libs:
-	$(CC) -c -fPIC argparse.c $(CFLAGS)
+	$(CC) -c -fPIC argparse.c $(FLAGS)
 	$(CC) -shared argparse.o -o libargparse.so
 	ar -rsc libargparse.a argparse.o
 
