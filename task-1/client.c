@@ -2,9 +2,11 @@
 
 int main() {
     char * s;
-    int c = getss(&s);
-    printf("%d \"%s\"\n", c, s);
     int code;
+    int c;
+    c = getss(&s);
+    printf("%d \"%s\"\n", c, s);
+
     if ((code = getss(&s)) < 0) {
         printf("%d\n", code);
         return 0;

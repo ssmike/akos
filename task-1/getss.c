@@ -15,11 +15,12 @@ int fgetss(FILE * fin, char ** res) {
 }
 
 int fgetss_(FILE * fin, char ** res, size_t lim) {
-    *res = NULL;
-    int cchar, psize = getpagesize();
+    int cchar, psize;
     size_t sz = 0;
     int allsz = sizeof(char);
     char * buf, * tmp;
+    *res = NULL;
+    psize = getpagesize();
     if (feof(stdin)) {
         return EOF_ERROR;
     }

@@ -12,10 +12,13 @@ main: clean libs
 run:
 	./main
 
-libs:
+libs: deps
 	$(CC) -c -fPIC argparse.c $(FLAGS)
 	$(CC) -shared argparse.o -o libargparse.so
 	ar -rsc libargparse.a argparse.o
+
+deps:
+	bash ./compile-deps.sh
 
 clean:
 	rm -f *.so
