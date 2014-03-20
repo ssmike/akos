@@ -6,7 +6,7 @@
 
 
 struct command{
-    char * input, * ouput;
+    char * input, * output;
     bool out_append;
     char * name;
     char ** args;
@@ -23,6 +23,6 @@ struct job * parse(char *);
 void print_job_desc(struct job *);
 extern char *strndup(const char *, size_t);
 char ** parseCTokens(char * x, int * sz);
-extern char * errormessage;
+char * PARSE_ERROR_MESSAGE;
 
 #endif

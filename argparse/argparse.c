@@ -17,6 +17,9 @@ static void increase(void ** arr, int * cur_sz, int * real_sz, int delta) {
     }
     *arr = tmp;
 }
+static void truncate_mem(void ** arr, int * cur_sz, int * real_sz) {
+    assert(*cur_sz == *real_sz);
+}
 
 static bool bracket(char c) {
     return c == '<' || c == '>';
@@ -78,7 +81,10 @@ char ** parseCTokens(char * x, int * sz) {
         if (i == n) push = true;
         /*spaces*/
         if (!qts && x[i] == ' ') push = true;
-        
+        /*backgrounds*/
+        if (!qts && x[i] == '&') push = true;
+        if (!qts && i > 0 && x[i - 1] == '&') push = true;
+
         if (push) {
             if (allspaces(x + ppos, i - ppos)) continue;
             increase((void**)&res, &rsz, &r_rsz, sizeof(char *));
@@ -95,27 +101,93 @@ char ** parseCTokens(char * x, int * sz) {
             ppos = i;
         }
     }
+    truncate_mem((void**)&res, &rsz, &r_rsz);
+    if (errno != 0) {
+        for (j = 0; j < *sz; j++)
+            free(res[j]);
+        free(res);
+        return NULL;
+    }
     return res;
+}
+
+static void * trymalloc(size_t size) {
+    void * res = malloc(size);
+    if (res == NULL) errno = ENOMEM;
+    return NULL;
 }
 
 static struct command * parse_command(char ** x, int n) { 
     int i, j  = 0;
+
+}
+
+static void free_command(struct command * cm) {
+    int i;
+    for (i = 0; i < cm->argc; i++)
+        free(cm->args[i]);
+    if (cm->input != NULL)
+        free(cm->input);
+    if (cm->output == NULL)
+        free(cm->output);
+    free(cm->args);
+    free(cm);
+}
+
+static void free_job(struct job * jb) {
+    int i;
+    for (i = 0; i < jb->commandsc; i++)
+        free_command(jb->commands[i]);
+    free(jb->commands);
+    free(jb);
 }
 
 struct job * parse(char * x) {
-    struct command ** commands = NULL;
     int n, i, j, cds_rs = 0, cds_ss = 0, ppos = 0;
     int rescdss = 0, rescdsr = 0;
-    struct job * res, * tmp;
+    struct job * res = trymalloc(sizeof(struct job *)), * tmp;
     char ** tokens = parseCTokens(x, &n);
-    errormessage = NULL;
+    res->commandsc = 0;
+    res->commands = NULL;
+    res->background = false;
+    PARSE_ERROR_MESSAGE = "All is ok";
     if (errno != 0) return NULL;
     for (i = 0; i < n; i++) {
-        if (strcmp("|", tokens[i])) {
-            
+        if (strcmp(tokens[i], "|") == 0) {
+            for (j = i + 1; j < n && strcmp(tokens[i], "|") != 0 && strcmp(tokens[i], "&") != 0; j++);
+            if (i == 0 || i == n - 1 || j == i + 1) {
+                PARSE_ERROR_MESSAGE = "invalid '|' use";
+                free_job(res);
+                return NULL;
+            }
+            increase((void**)&(res->commands), &cds_ss, &cds_rs, sizeof(struct command *));
+            if (errno == 0) {
+                res->commands[res->commandsc] = parse_command(tokens + i + 1, j - i - 1);
+                if (res->commands[res->commandsc] == NULL) {
+                    free_job(res);
+                    return NULL;
+                }
+                res->commandsc += 1;
+            } else {
+                free_job(res);
+                return NULL;
+            }
+        }
+        if (strcmp(tokens[i], "&") == 0) {
+            if (i != n - 1 || res->background) {
+                PARSE_ERROR_MESSAGE = "invalid '&' use";
+                free_job(res);
+                return NULL;
+            }
+            res->background = true;
         }
     }
-    
+    truncate_mem((void**)&res->commands, &cds_ss, &cds_rs);
+    if (errno != 0) {
+        free_job(res);
+        return NULL;
+    }
+    return res;
 }
 
 
