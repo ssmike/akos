@@ -5,6 +5,31 @@
 #include <stdio.h>
 #include <errno.h>
 
+static void free_command(struct command * cm) {
+    int i;
+    for (i = 0; i < cm->argc; i++)
+        free(cm->args[i]);
+    if (cm->input != NULL)
+        free(cm->input);
+    if (cm->output == NULL)
+        free(cm->output);
+    free(cm->args);
+    free(cm);
+}
+
+/* parameters and backslashes */
+static char * prepare_string() {
+    
+}
+
+static void free_job(struct job * jb) {
+    int i;
+    for (i = 0; i < jb->commandsc; i++)
+        free_command(jb->commands[i]);
+    free(jb->commands);
+    free(jb);
+}
+
 static void increase(void ** arr, int * cur_sz, int * real_sz, int delta) {
     void * tmp;
     assert(*cur_sz == *real_sz);
@@ -54,36 +79,40 @@ static bool allspaces(char * x, int n) {
         if (x[i] != ' ') return false;
     return true;
 }
+static int qtype(char x) {
+    if (x == '\'') return 1;
+    if (x == '\"') return 2;
+}
 
 char ** parseCTokens(char * x, int * sz) {
     int i, n, rsz = 0, r_rsz = 0, j;
     int qts = 0;
     int ppos = 0;
     char ** res = NULL;
+    bool c_slsh = false, pr_slsh = false;
     *sz = 0;
     n = strlen(x);
-    for (i = 0; i <= n; i++) {
+    for (i = 0; i <= n && (c_slsh || qts || x[i - 1] != '#'); i++) {
         bool push = false;
         /*quotes*/
-        if (quotes(x[i]) && !qts) push = true;
-        if (i > 0 && !qts && quotes(x[i])) push = true;
-        if (quotes(x[i])) {
-            if (x[i] == '\'') qts ^= 1;
-            if (x[i] == '\"') qts ^= 2;
+        if (!c_slsh && quotes(x[i]) && !qts) push = true;
+        if (!pr_slsh && i > 0 && !qts && quotes(x[i - 1])) push = true;
+        if (!c_slsh && qts == qtype(x[i]) && quotes(x[i])) {
+            qts ^= qtype(x[i]);
         }
         /*tasks delimiters*/
-        if (!qts && x[i] == '|') push = true;
-        if (!qts && i > 0 && x[i - 1] == '|') push = true;
+        if (!c_slsh && !qts && x[i] == '|') push = true;
+        if (!pr_slsh && !qts && i > 0 && x[i - 1] == '|') push = true;
         /*redirections*/
-        if (!qts && bracket(x[i])) push = true;
-        if (!qts && i != 0 && bracket(x[i]) && !bracket(x[i - 1])) push = true;
+        if (!c_slsh && !qts && bracket(x[i])) push = true;
+        if (!c_slsh && !qts && i != 0 && bracket(x[i]) && !bracket(x[i - 1])) push = true;
         /*end of the line*/
-        if (i == n) push = true;
+        if (!c_slsh && i == n || x[i] == '#') push = true;
         /*spaces*/
-        if (!qts && x[i] == ' ') push = true;
+        if (!c_slsh && !qts && x[i] == ' ') push = true;
         /*backgrounds*/
-        if (!qts && x[i] == '&') push = true;
-        if (!qts && i > 0 && x[i - 1] == '&') push = true;
+        if (!c_slsh && !qts && x[i] == '&') push = true;
+        if (!pr_slsh && !qts && i > 0 && x[i - 1] == '&') push = true;
 
         if (push) {
             if (allspaces(x + ppos, i - ppos)) continue;
@@ -99,6 +128,14 @@ char ** parseCTokens(char * x, int * sz) {
                 return NULL;
             }
             ppos = i;
+        }
+
+        if (!c_slsh && x[i] == '\\') {
+            pr_slsh = c_slsh;
+            c_slsh = true;
+        } else {
+            pr_slsh = c_slsh;
+            c_slsh = false;
         }
     }
     truncate_mem((void**)&res, &rsz, &r_rsz);
@@ -118,29 +155,20 @@ static void * trymalloc(size_t size) {
 }
 
 static struct command * parse_command(char ** x, int n) { 
-    int i, j  = 0;
-
+    int i, j, cd_ss = 0, cd_rs = 0;
+    struct command * cd = trymalloc(sizeof(struct command *));
+    if (errno != 0) return NULL;
+    cd->argc = 0;
+    cd->out_append = false;
+    cd->output = NULL;
+    cd->input = NULL;
+    cd->name = NULL;
+    for (i = 0; i < n; i++) {
+        
+    }
 }
 
-static void free_command(struct command * cm) {
-    int i;
-    for (i = 0; i < cm->argc; i++)
-        free(cm->args[i]);
-    if (cm->input != NULL)
-        free(cm->input);
-    if (cm->output == NULL)
-        free(cm->output);
-    free(cm->args);
-    free(cm);
-}
 
-static void free_job(struct job * jb) {
-    int i;
-    for (i = 0; i < jb->commandsc; i++)
-        free_command(jb->commands[i]);
-    free(jb->commands);
-    free(jb);
-}
 
 struct job * parse(char * x) {
     int n, i, j, cds_rs = 0, cds_ss = 0, ppos = 0;
@@ -152,9 +180,9 @@ struct job * parse(char * x) {
     res->background = false;
     PARSE_ERROR_MESSAGE = "All is ok";
     if (errno != 0) return NULL;
-    for (i = 0; i < n; i++) {
-        if (strcmp(tokens[i], "|") == 0) {
-            for (j = i + 1; j < n && strcmp(tokens[i], "|") != 0 && strcmp(tokens[i], "&") != 0; j++);
+    for (i = -1; i < n; i++) {
+        if (i == -1 || strcmp(tokens[i], "|") == 0) {
+            for (j = i + 1; j < n && strcmp(tokens[j], "|") != 0 && strcmp(tokens[j], "&") != 0; j++);
             if (i == 0 || i == n - 1 || j == i + 1) {
                 PARSE_ERROR_MESSAGE = "invalid '|' use";
                 free_job(res);

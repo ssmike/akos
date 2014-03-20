@@ -1,0 +1,3 @@
+input format:
+3 strings a, b, c
+all occurences b in a replace by c
