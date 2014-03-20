@@ -33,6 +33,10 @@ static struct command * parse_command(char * x) {
        errno = ENOMEM;
        return NULL;
    }
+   res->ouput = res->input = NULL;
+   res->out_append = false;
+   res->args = NULL;
+   res->argc = 0;
    for (i = 0; i < n; i++) {
        
    }
