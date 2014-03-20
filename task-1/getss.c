@@ -32,6 +32,10 @@ int fgetss_(FILE * fin, char ** res, size_t lim)
     }
     buf = malloc(sizeof(char));
     if (buf == NULL) return ALLOCATION_FAILED;
+
+    /*
+     * Такая конструкция затрудняет чтение и отладку.
+     */
     while (sz < lim && (cchar = fgetc(fin)) != '\n' && !feof(fin))
     {
         while (sz + sizeof(char) >= allsz)
