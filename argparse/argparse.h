@@ -21,6 +21,8 @@ struct job{
 
 struct job * parse(char *);
 void print_job_desc(struct job *);
-char *strndup(const char *, size_t);
+extern char *strndup(const char *, size_t);
+char ** parseCTokens(char * x, int * sz);
+extern char * errormessage;
 
 #endif

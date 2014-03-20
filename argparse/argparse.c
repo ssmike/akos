@@ -7,92 +7,115 @@
 
 static void increase(void ** arr, int * cur_sz, int * real_sz, int delta) {
     void * tmp;
-    assert(cur_sz == real_sz);
+    assert(*cur_sz == *real_sz);
     *real_sz += delta;
     *cur_sz += delta;
     tmp = realloc(*arr, *cur_sz);
-    if (tmp == 0) {
+    if (tmp == NULL) {
         errno = ENOMEM;
-        free(arr);
         return;
     }
     *arr = tmp;
 }
 
-static char ** parseCTokens(char * x, int * sz) {
-    int i, n;
-    n = strlen(x);
-     
+static bool bracket(char c) {
+    return c == '<' || c == '>';
 }
 
-static struct command * parse_command(char * x) { 
-   int i, j, n = 0;
-   char ** tokens = parseCTokens(x, &n); 
-   struct command * res = (struct command *) malloc(sizeof(struct command));
-   if (res == NULL) {
-       errno = ENOMEM;
-       return NULL;
-   }
-   res->ouput = res->input = NULL;
-   res->out_append = false;
-   res->args = NULL;
-   res->argc = 0;
-   for (i = 0; i < n; i++) {
-       
-   }
+static char * truncate(char * s) {
+    int n;
+    int i, j;
+    char * tmp;
+    if (s == NULL){
+        errno = ENOMEM;
+        return NULL;
+    }
+    n = strlen(s);
+    i = 0; j = n;
+    while (i < n && s[i] == ' ') i++;
+    while (j > 0 && s[j - 1] == ' ') j--;
+    tmp = strndup(s + i, j - i);
+    if (tmp != NULL)
+        free(s);
+    else errno = ENOMEM;
+    return tmp;
+}
+
+static bool quotes(char x) {
+    return x == '\"' || x == '\'';
+}
+
+static bool allspaces(char * x, int n) {
+    int i;
+    for (i = 0; i < n; i++)
+        if (x[i] != ' ') return false;
+    return true;
+}
+
+char ** parseCTokens(char * x, int * sz) {
+    int i, n, rsz = 0, r_rsz = 0, j;
+    int qts = 0;
+    int ppos = 0;
+    char ** res = NULL;
+    *sz = 0;
+    n = strlen(x);
+    for (i = 0; i <= n; i++) {
+        bool push = false;
+        /*quotes*/
+        if (quotes(x[i]) && !qts) push = true;
+        if (i > 0 && !qts && quotes(x[i])) push = true;
+        if (quotes(x[i])) {
+            if (x[i] == '\'') qts ^= 1;
+            if (x[i] == '\"') qts ^= 2;
+        }
+        /*tasks delimiters*/
+        if (!qts && x[i] == '|') push = true;
+        if (!qts && i > 0 && x[i - 1] == '|') push = true;
+        /*redirections*/
+        if (!qts && bracket(x[i])) push = true;
+        if (!qts && i != 0 && bracket(x[i]) && !bracket(x[i - 1])) push = true;
+        /*end of the line*/
+        if (i == n) push = true;
+        /*spaces*/
+        if (!qts && x[i] == ' ') push = true;
+        
+        if (push) {
+            if (allspaces(x + ppos, i - ppos)) continue;
+            increase((void**)&res, &rsz, &r_rsz, sizeof(char *));
+            if (errno == 0) {
+                res[*sz] = truncate(strndup(x + ppos, i - ppos));
+                *sz += 1;
+            }
+            if (errno != 0) {
+                for (j = 0; j < *sz; j++)
+                    free(res[j]);
+                free(res);
+                return NULL;
+            }
+            ppos = i;
+        }
+    }
+    return res;
+}
+
+static struct command * parse_command(char ** x, int n) { 
+    int i, j  = 0;
 }
 
 struct job * parse(char * x) {
-    char ** commands = NULL;
-    int n, i, j, cds_rs = 0, cds_ss = 0;
+    struct command ** commands = NULL;
+    int n, i, j, cds_rs = 0, cds_ss = 0, ppos = 0;
     int rescdss = 0, rescdsr = 0;
     struct job * res, * tmp;
-    n = strlen(x);
+    char ** tokens = parseCTokens(x, &n);
+    errormessage = NULL;
+    if (errno != 0) return NULL;
     for (i = 0; i < n; i++) {
-        if (x[i] != '|') continue;
-        for (j = i + 1; j < n && x[j] != '|' && x[j] != '&'; j++);
-        increase((void**)(&commands), &cds_ss, &cds_rs, sizeof(char*));
-        if (errno != 0) {
-            free(commands);
-            return NULL; 
+        if (strcmp("|", tokens[i])) {
+            
         }
-        commands[(cds_ss/(sizeof(char*))) - 1] = strndup(x + i + 1, j - i - 1);
     }
-    for (i = n - 1; i >= 0 && x[i] != '&'; i--);
-    res = (struct job*) malloc(sizeof(struct job));
-    if (res == NULL) {
-        free(commands);
-        return NULL;
-    }
-    res->background = (i >= 0 && x[i] == '&');
-    res->commandsc = cds_ss;
-    res->commands = (struct command**)malloc(sizeof(struct command *) * cds_ss/sizeof(char *));
-    if (res->commands == NULL) {
-        errno = ENOMEM;
-        free(commands);
-        free(res);
-        return NULL;
-    }
-    for (i = 0; i < cds_ss; i++) {
-        increase((void**)&(res->commands), &rescdss, &rescdsr, sizeof(struct command *));
-        if (errno != 0) {
-            errno = ENOMEM;
-            free(commands);
-            free(res->commands);
-            free(res);
-            return NULL;
-        }
-        res->commands[rescdss/sizeof(struct command *) - 1] = parse_command(commands[i]);
-    }
-    free(commands);
-    tmp = realloc(res->commands, res->commandsc * sizeof(struct command *));
-    if (tmp == NULL) {
-        free(res->commands);
-        free(res);
-        errno = ENOMEM;
-        return NULL;
-    }
-    return res;
+    
 }
 
 

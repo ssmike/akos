@@ -1,6 +1,6 @@
 SSP=$(PWD)/../task-1
 ARGS=$(PWD)/../argparse
-LDFLAGS=-L$(SSP) -L$(ARGS) -Wl,-rpath=$(SSP),-rpath=$(ARGS) -lgetss
+LDFLAGS=-L$(SSP) -L$(ARGS) -Wl,-rpath=$(SSP),-rpath=$(ARGS) -lgetss -largparse
 INCLUDE=-I$(SSP) -I$(ARGS)
 FLAGS= -pedantic -ansi -g $(INCLUDE)
 CC=gcc
