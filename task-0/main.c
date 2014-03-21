@@ -98,5 +98,5 @@ int main(int argc, char ** argv) {
     start = clock();
     sum();
     finish = clock();
-    printf("%.6fsec\n", ((double)(finish - start)) / CLOCKS_PER_SEC);
+    printf("%.6f секунд\n", ((double)(finish - start)) / CLOCKS_PER_SEC);
 }
