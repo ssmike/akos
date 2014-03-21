@@ -9,7 +9,7 @@ CC=gcc
 main: clean libs
 	$(CC) client.c -o main $(LDFLAGS) $(FLAGS)
 
-run:
+run: main
 	./main
 
 libs: deps

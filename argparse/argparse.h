@@ -22,7 +22,10 @@ struct job{
 struct job * parse(char *);
 void print_job_desc(struct job *);
 extern char *strndup(const char *, size_t);
+char *strdup(const char *s);
 char ** parseCTokens(char * x, int * sz);
 char * PARSE_ERROR_MESSAGE;
+struct command * parse_command(char ** x, int n);
+void print_command_desc(struct command *);
 
 #endif

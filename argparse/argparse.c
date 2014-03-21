@@ -7,26 +7,27 @@
 
 static void free_command(struct command * cm) {
     int i;
-    for (i = 0; i < cm->argc; i++)
-        free(cm->args[i]);
+    if (cm->args != NULL)
+        for (i = 0; i < cm->argc; i++)
+            free(cm->args[i]);
+    if (cm->name != NULL)
+        free(cm->name);
     if (cm->input != NULL)
         free(cm->input);
-    if (cm->output == NULL)
+    if (cm->output != NULL)
         free(cm->output);
-    free(cm->args);
+    if (cm->args != NULL)
+        free(cm->args);
     free(cm);
-}
-
-/* parameters and backslashes */
-static char * prepare_string() {
-    
 }
 
 static void free_job(struct job * jb) {
     int i;
-    for (i = 0; i < jb->commandsc; i++)
-        free_command(jb->commands[i]);
-    free(jb->commands);
+    if (jb->commands != NULL) {
+        for (i = 0; i < jb->commandsc; i++)
+            free_command(jb->commands[i]);
+        free(jb->commands);
+    }
     free(jb);
 }
 
@@ -95,16 +96,16 @@ char ** parseCTokens(char * x, int * sz) {
     for (i = 0; i <= n && (c_slsh || qts || x[i - 1] != '#'); i++) {
         bool push = false;
         /*quotes*/
-        if (!c_slsh && quotes(x[i]) && !qts) push = true;
-        if (!pr_slsh && i > 0 && !qts && quotes(x[i - 1])) push = true;
-        if (!c_slsh && qts == qtype(x[i]) && quotes(x[i])) {
+        /*if (!c_slsh && quotes(x[i]) && !qts) push = true;*/
+        /*if (!pr_slsh && i > 0 && !qts && quotes(x[i - 1])) push = true;*/
+        if (!c_slsh && (qts == 0 || qts == qtype(x[i])) && quotes(x[i])) {
             qts ^= qtype(x[i]);
         }
         /*tasks delimiters*/
         if (!c_slsh && !qts && x[i] == '|') push = true;
         if (!pr_slsh && !qts && i > 0 && x[i - 1] == '|') push = true;
         /*redirections*/
-        if (!c_slsh && !qts && bracket(x[i])) push = true;
+        if (!pr_slsh && !qts && i != 0 && bracket(x[i - 1]) && !bracket(x[i])) push = true;
         if (!c_slsh && !qts && i != 0 && bracket(x[i]) && !bracket(x[i - 1])) push = true;
         /*end of the line*/
         if (!c_slsh && i == n || x[i] == '#') push = true;
@@ -114,8 +115,8 @@ char ** parseCTokens(char * x, int * sz) {
         if (!c_slsh && !qts && x[i] == '&') push = true;
         if (!pr_slsh && !qts && i > 0 && x[i - 1] == '&') push = true;
 
-        if (push) {
-            if (allspaces(x + ppos, i - ppos)) continue;
+        if (push && !allspaces(x + ppos, i - ppos)) {
+            /*if (allspaces(x + ppos, i - ppos)) continue;*/
             increase((void**)&res, &rsz, &r_rsz, sizeof(char *));
             if (errno == 0) {
                 res[*sz] = truncate(strndup(x + ppos, i - ppos));
@@ -151,21 +152,79 @@ char ** parseCTokens(char * x, int * sz) {
 static void * trymalloc(size_t size) {
     void * res = malloc(size);
     if (res == NULL) errno = ENOMEM;
-    return NULL;
+    if (errno != 0) return NULL;
+    return res;
 }
 
-static struct command * parse_command(char ** x, int n) { 
+struct command * parse_command(char ** x, int n) { 
+#define fail(s) { \
+                    PARSE_ERROR_MESSAGE=s; \
+                    free_command(cd);  \
+                    return NULL;      \
+                }
     int i, j, cd_ss = 0, cd_rs = 0;
-    struct command * cd = trymalloc(sizeof(struct command *));
+    struct command * cd = trymalloc(sizeof(struct command));
     if (errno != 0) return NULL;
     cd->argc = 0;
+    cd->args = NULL;
     cd->out_append = false;
     cd->output = NULL;
     cd->input = NULL;
     cd->name = NULL;
     for (i = 0; i < n; i++) {
-        
+        if (bracket(x[i][0])) {
+           if (i == n - 1) fail("syntax error at last token");
+           if (strcmp(x[i], "<") == 0) {
+                if (cd->input != NULL) fail("too many redirects");
+                cd->input = strdup(x[i + 1]);
+                if (cd->input == NULL) {
+                    free_command(cd);
+                    return NULL;
+                }
+           } else if (strcmp(x[i], ">") == 0) {
+                if (cd->output != NULL) fail("too many redirects");
+                cd->output = strdup(x[i + 1]);
+                if (cd->output == NULL) {
+                    free_command(cd);
+                    return NULL;
+                }
+           } else if (strcmp(x[i], ">>") == 0) {
+                if (cd->output != NULL) fail("too many redirects");
+                cd->output = strdup(x[i + 1]);
+                cd->out_append = true;
+                if (cd->output == NULL) {
+                    errno = ENOMEM;
+                    free_command(cd);
+                    return NULL;
+                }
+           } else fail("invalid token");
+           i++;
+        } else {
+           if (i == 0) {
+              if ((cd->name = strdup(x[i])) == NULL) {
+                  free_command(cd);
+                  return NULL;
+              }
+           } else {
+               increase((void**)&(cd->args), &cd_ss, &cd_rs, sizeof(char*));
+               if (errno != 0) {
+                   cd->args[cd->argc] = strdup(x[i]);
+                   cd->argc += 1;
+               }
+               if (errno != 0 || cd->args[cd->argc - 1] == NULL) {
+                   free_command(cd);
+                   return NULL;
+               }
+           }
+        }
     }
+    truncate_mem((void**)&(cd->args), &cd_ss, &cd_rs);
+    if (errno != 0) {
+        free_command(cd);
+        return NULL;
+    }
+    return cd;
+#undef fail
 }
 
 
@@ -173,7 +232,7 @@ static struct command * parse_command(char ** x, int n) {
 struct job * parse(char * x) {
     int n, i, j, cds_rs = 0, cds_ss = 0, ppos = 0;
     int rescdss = 0, rescdsr = 0;
-    struct job * res = trymalloc(sizeof(struct job *)), * tmp;
+    struct job * res = trymalloc(sizeof(struct job)), * tmp;
     char ** tokens = parseCTokens(x, &n);
     res->commandsc = 0;
     res->commands = NULL;
@@ -200,7 +259,7 @@ struct job * parse(char * x) {
                 free_job(res);
                 return NULL;
             }
-        }
+        } else
         if (strcmp(tokens[i], "&") == 0) {
             if (i != n - 1 || res->background) {
                 PARSE_ERROR_MESSAGE = "invalid '&' use";
@@ -210,6 +269,9 @@ struct job * parse(char * x) {
             res->background = true;
         }
     }
+    for (i = 0; i < n; i++)
+        free(tokens[i]);
+    free(tokens);
     truncate_mem((void**)&res->commands, &cds_ss, &cds_rs);
     if (errno != 0) {
         free_job(res);
@@ -218,15 +280,28 @@ struct job * parse(char * x) {
     return res;
 }
 
+void print_command_desc(struct command * jb) {
+    int k;
+    printf("-------command\n");
+    printf("name : %s\n", jb->name);
+    printf("args: %d\n", jb->argc);
+    if (jb->input != NULL)
+        printf("input redirected from : %s\n", jb->input);
+    if (jb->output != NULL)
+        printf("output redirected to : %s\n", jb->output);
+    if (jb->out_append) {
+        printf("output append mode\n");
+    }
+    for (k = 0; k < jb->argc; k++)
+        printf("arg[%d]: %s\n", k, jb->args[k]);
+}
+
 
 void print_job_desc(struct job * jb) {
     int i, j, k;
     printf("background: %d\n", jb->background);
     printf("commands : %d\n", jb->commandsc);
     for (i = 0; i < jb->commandsc; i++) {
-        printf("name : %s\n", jb->commands[i]->name);
-        printf("args: %d\n", jb->commands[i]->argc);
-        for (k = 0; k < jb->commands[i]->argc; k++)
-            printf("arg[%d]: %s\n", k, jb->commands[i]->args[k]);
+        print_command_desc(jb->commands[i]);
     }
 }
