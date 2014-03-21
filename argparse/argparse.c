@@ -207,7 +207,7 @@ struct command * parse_command(char ** x, int n) {
               }
            } else {
                increase((void**)&(cd->args), &cd_ss, &cd_rs, sizeof(char*));
-               if (errno != 0) {
+               if (errno == 0) {
                    cd->args[cd->argc] = strdup(x[i]);
                    cd->argc += 1;
                }

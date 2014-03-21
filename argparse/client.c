@@ -8,9 +8,11 @@ int main() {
         int n, i;
         struct job * jb;
         char ** ss = parseCTokens(s, &n); 
+        puts("tokens\n");
         printf("%d\n", n);
         for (i = 0; i < n; i++)
             puts(ss[i]);
+        puts("command\n");
         /*
         struct command * cs = parse_command(ss, n);
         if (cs == NULL) {
@@ -25,6 +27,7 @@ int main() {
             return 0;
         }
         print_job_desc(jb);
+        
     }
     return 0;    
 }
