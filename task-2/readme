@@ -1,0 +1,5 @@
+usage:
+./main -k
+k - is maximum length of subsequence
+
+takes string from input

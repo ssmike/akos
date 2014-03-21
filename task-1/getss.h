@@ -8,6 +8,7 @@
 #define EOF_ERROR (-2)
 #define LIMIT_EXCEEDED (-3)
 #define PAGES_LIMIT 10
+/* if normal exit returns length of string */
 
 extern int getss(char ** res);
 extern int getss_(char ** res, size_t lim);
