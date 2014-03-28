@@ -1,5 +1,5 @@
 all: clean
-	gcc ./main.c -ansi -pedantic -o ./main
+	gcc ./main.c -ansi -pedantic -o ./main -g
 run:
 	./main
 clean:
