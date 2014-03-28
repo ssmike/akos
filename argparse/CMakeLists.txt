@@ -7,8 +7,8 @@ add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../task-1
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../task-1)
 
-add_executable(client client.c)
+add_executable(argparse-client client.c)
 
-add_library(argparse SHARED argparse.c)
+add_library(argparse STATIC argparse.c)
 
-target_link_libraries(client getss argparse)
+target_link_libraries(argparse-client getss argparse)

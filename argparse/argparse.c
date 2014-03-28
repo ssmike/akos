@@ -234,15 +234,15 @@ struct job * parse(char * x) {
     int rescdss = 0, rescdsr = 0;
     struct job * res = trymalloc(sizeof(struct job)), * tmp;
     char ** tokens = parseCTokens(x, &n);
+    res->commandsc = 0;
+    res->commands = NULL;
+    res->background = false;
     if (n == 0) {
         PARSE_ERROR_MESSAGE = "empty string";
         free_job(res);
         return NULL;
     }
-    res->commandsc = 0;
-    res->commands = NULL;
-    res->background = false;
-    PARSE_ERROR_MESSAGE = "All is ok";
+    PARSE_ERROR_MESSAGE = "ok";
     if (errno != 0) return NULL;
     for (i = -1; i < n; i++) {
         if (i == -1 || strcmp(tokens[i], "|") == 0) {

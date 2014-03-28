@@ -4,23 +4,18 @@
 
 int main() {
     char * s;
-    if (getss(&s) >= 0) {
+    int ii = 0;
+    while (!feof(stdin)) {
         int n, i;
         struct job * jb;
-        char ** ss = parseCTokens(s, &n); 
+        char ** ss; 
+        if (getss(&s) < 0) continue;
+        ss = parseCTokens(s, &n);
         puts("tokens\n");
         printf("%d\n", n);
         for (i = 0; i < n; i++)
             puts(ss[i]);
-        puts("command\n");
-        /*
-        struct command * cs = parse_command(ss, n);
-        if (cs == NULL) {
-            printf("%s\n", PARSE_ERROR_MESSAGE);
-            return 0;
-        }
-        print_command_desc(cs);
-        */
+        printf("\n----job %d----\n", ii++);
         jb = parse(s);
         if (jb == NULL) {
             printf("%s\n", PARSE_ERROR_MESSAGE);
