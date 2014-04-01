@@ -12,12 +12,12 @@
 
 
 void execute(struct job* x) {
-    int i, j;
+/*    int i, j;
     for (i = 0; i < x->commandsc; i++) {
         replace_vars(&(x->commands[i]->name));
         for (j = 0; j < x->commands[i]->argc; j++)
             replace_vars(&(x->commands[i]->args[j]));
-    }
+    }*/
     print_job_desc(x);
     fflush(stdout);
 }
