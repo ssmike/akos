@@ -26,13 +26,13 @@ void init_shell(int argc, char ** argv) {
 }
 
 
-static void push_back(char ** s, size_t s_ss, size_t s_rs, char x) {
-    increase((void**)s, &s_ss, &s_rs, sizeof(char));
+static void push_back(char ** s, size_t * s_ss, size_t * s_rs, char x) {
+    increase((void**)s, s_ss, s_rs, sizeof(char));
     if (errno != 0) {
         fprintf(stderr, "memory allocation error");
         exit(3);
     }
-    (*s)[(s_ss/sizeof(char)) - 1] = x;
+    (*s)[(*s_ss/sizeof(char)) - 1] = x;
 }
 
 static char * findvar(char * name) {
@@ -46,7 +46,7 @@ static int type(char x) {
 }
 
 static bool isChar(char x) {
-    return true;   
+    return x != '\"' && x != '\'' && x != '}' && x != '{' && x != '$' && x != '\\';
 }
 
 int replace_vars(char ** x) {
@@ -57,11 +57,14 @@ int replace_vars(char ** x) {
     int quott = 0;
     bool slash = false;
     for (i = 0; i < n; i++) {
-       if (quott) {
-           /*if (isChar()) {
-               
-           }*/
-       }
+        if (slash) {
+            
+        }
+        if (quott) {
+            if (type(*x[i]) == quott)
+                quott = false;
+            else push_back(&ans, &anssz, &ansrsz, *x[i]);
+        }
     }
     *x = ans;
     return 0;

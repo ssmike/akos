@@ -1,20 +1,23 @@
 CFLAGS+=-g -ansi -pedantic -Werror -Wextra
 LDFLAGS+=
-ALL_NEEDED=shell_structs.h
 CFILES=$(wildcard *.c)
-
-OBJECTS=$(CFILES:.c=.o)
+OBJECTS=$(addprefix bin/,$(CFILES:.c=.o))
 CC=gcc
 
-main: $(OBJECTS)
-	$(CC) $(OBJECTS) -o main  $(LDFLAGS)
+dist/main: bin dist $(OBJECTS)
+	$(CC) $(OBJECTS) -o dist/main  $(LDFLAGS)
 
-%.o : %.c %.h $(ALL_NEEDED)
+
+bin/%.o : %.c $(wildcard *.h)
 	$(CC) -c $< -o $@ $(CFLAGS)
 
-run: main
-	./main
+run: dist/main
+	./dist/main
 
 clean:
 	rm -f *.o
-	rm -f main
+	rm -rf ./bin ./dist
+
+%:
+	mkdir -p $@
+
