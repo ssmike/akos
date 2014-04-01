@@ -80,7 +80,7 @@ char ** parseCTokens(char * x, int * sz) {
     bool c_slsh = false, pr_slsh = false;
     *sz = 0;
     n = strlen(x);
-    for (i = 0; i <= n && (c_slsh || qts/* || x[i - 1] != '#'*/); i++) {
+    for (i = 0; i <= n; i++) {
         bool push = false;
         /*quotes*/
         /*if (!c_slsh && quotes(x[i]) && !qts) push = true;*/
@@ -94,7 +94,7 @@ char ** parseCTokens(char * x, int * sz) {
         /*redirections*/
         if (!pr_slsh && !qts && i != 0 && bracket(x[i - 1]) && !bracket(x[i])) push = true;
         if (!c_slsh && !qts && i != 0 && bracket(x[i]) && !bracket(x[i - 1])) push = true;
-        /*if (!c_slsh && i == n || x[i] == '#') push = true;*/
+        if (!c_slsh && i == n) push = true;
         /*spaces*/
         if (!c_slsh && !qts && x[i] == ' ') push = true;
         /*backgrounds*/
@@ -220,7 +220,12 @@ struct job * parse(char * x) {
     int n, i, j;
     size_t cds_rs = 0, cds_ss = 0;
     struct job * res = trymalloc(sizeof(struct job));
-    char ** tokens = parseCTokens(x, &n);
+    char ** tokens;
+    if (x == NULL) {
+        PARSE_ERROR_MESSAGE = "empty string";
+        return NULL;
+    }
+    tokens = parseCTokens(x, &n);
     res->commandsc = 0;
     res->commands = NULL;
     res->background = false;
