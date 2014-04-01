@@ -1,4 +1,5 @@
 #include "argparse.h"
+#include "memmove.h"
 #include <stdlib.h>
 #include <assert.h>
 #include <string.h>
@@ -31,21 +32,6 @@ static void free_job(struct job * jb) {
     free(jb);
 }
 
-static void increase(void ** arr, int * cur_sz, int * real_sz, int delta) {
-    void * tmp;
-    assert(*cur_sz == *real_sz);
-    *real_sz += delta;
-    *cur_sz += delta;
-    tmp = realloc(*arr, *cur_sz);
-    if (tmp == NULL) {
-        errno = ENOMEM;
-        return;
-    }
-    *arr = tmp;
-}
-static void truncate_mem(void ** arr, int * cur_sz, int * real_sz) {
-    assert(*cur_sz == *real_sz);
-}
 
 static bool bracket(char c) {
     return c == '<' || c == '>';
@@ -86,14 +72,15 @@ static int qtype(char x) {
 }
 
 char ** parseCTokens(char * x, int * sz) {
-    int i, n, rsz = 0, r_rsz = 0, j;
+    int i, n, j;
+    size_t rsz = 0, r_rsz = 0;
     int qts = 0;
     int ppos = 0;
     char ** res = NULL;
     bool c_slsh = false, pr_slsh = false;
     *sz = 0;
     n = strlen(x);
-    for (i = 0; i <= n && (c_slsh || qts || x[i - 1] != '#'); i++) {
+    for (i = 0; i <= n && (c_slsh || qts/* || x[i - 1] != '#'*/); i++) {
         bool push = false;
         /*quotes*/
         /*if (!c_slsh && quotes(x[i]) && !qts) push = true;*/
@@ -107,8 +94,7 @@ char ** parseCTokens(char * x, int * sz) {
         /*redirections*/
         if (!pr_slsh && !qts && i != 0 && bracket(x[i - 1]) && !bracket(x[i])) push = true;
         if (!c_slsh && !qts && i != 0 && bracket(x[i]) && !bracket(x[i - 1])) push = true;
-        /*end of the line*/
-        if (!c_slsh && i == n || x[i] == '#') push = true;
+        /*if (!c_slsh && i == n || x[i] == '#') push = true;*/
         /*spaces*/
         if (!c_slsh && !qts && x[i] == ' ') push = true;
         /*backgrounds*/
@@ -162,7 +148,8 @@ struct command * parse_command(char ** x, int n) {
                     free_command(cd);  \
                     return NULL;      \
                 }
-    int i, j, cd_ss = 0, cd_rs = 0;
+    int i;
+    size_t cd_ss = 0, cd_rs = 0;
     struct command * cd = trymalloc(sizeof(struct command));
     if (errno != 0) return NULL;
     cd->argc = 0;
@@ -230,9 +217,9 @@ struct command * parse_command(char ** x, int n) {
 
 
 struct job * parse(char * x) {
-    int n, i, j, cds_rs = 0, cds_ss = 0, ppos = 0;
-    int rescdss = 0, rescdsr = 0;
-    struct job * res = trymalloc(sizeof(struct job)), * tmp;
+    int n, i, j;
+    size_t cds_rs = 0, cds_ss = 0;
+    struct job * res = trymalloc(sizeof(struct job));
     char ** tokens = parseCTokens(x, &n);
     res->commandsc = 0;
     res->commands = NULL;
@@ -303,7 +290,7 @@ void print_command_desc(struct command * jb) {
 
 
 void print_job_desc(struct job * jb) {
-    int i, j, k;
+    int i;
     printf("background: %d\n", jb->background);
     printf("commands : %d\n", jb->commandsc);
     for (i = 0; i < jb->commandsc; i++) {
