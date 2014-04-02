@@ -123,11 +123,16 @@ struct command * parse_command(char ** x, int n) {
                     return NULL;      \
                 }
     int i, tst;
-    size_t cd_ss = 0, cd_rs = 0;
+    size_t cd_ss = sizeof(char*), cd_rs = sizeof(char*);
     struct command * cd = trymalloc(sizeof(struct command));
     if (errno != 0) return NULL;
-    cd->argc = 0;
-    cd->args = NULL;
+    cd->argc = 1;
+    cd->args = malloc(sizeof(char*));
+    if (cd->args == NULL) {
+        free_command(cd);
+        errno = ENOMEM;
+        return NULL;
+    }
     cd->out_append = false;
     cd->output = NULL;
     cd->input = NULL;
@@ -163,8 +168,9 @@ struct command * parse_command(char ** x, int n) {
         } else {
             if (i == 0) {
                 cd->name = strdup(x[i]);
-                tst = replace_vars(&(cd->name));
-                if (tst != 0 || cd->name == NULL) {
+                cd->args[0] = strdup(x[i]);
+                tst = replace_vars(&(cd->name)) || replace_vars(&(cd->args[0]));
+                if (tst != 0 || cd->name == NULL || cd->args[0] == NULL) {
                     free_command(cd);
                     return NULL;
                 }
@@ -360,7 +366,7 @@ int replace_vars(char ** x) {
         }
         push_back(&ans, &anssz, &ansrsz, (*x)[i]);
     }
-    push_back(&ans, &anssz, &ansrsz, '\0');
+    /*push_back(&ans, &anssz, &ansrsz, '\0');*/
     truncate_mem((void**)&ans, &anssz, &ansrsz);
     if (errno != 0) {
         free(ans);

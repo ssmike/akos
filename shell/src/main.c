@@ -18,17 +18,21 @@ static int type(char x) {
 
 static void exec_s() {
     struct job * jb = parse(s);
+    free(s);
     if (jb != NULL) {
         execute(jb);
     } else {
         fprintf(stderr, "\n%s\n", PARSE_ERROR_MESSAGE);
         fflush(stderr);
     }
-    free(s);
     s = (char*)malloc(sizeof(char));
     if (s == NULL) exit(3);
     s[0] = '\0';
     s_ss = s_rs = sizeof(char);
+    if(errno == ENOMEM) {
+        free(s);
+        exit(3);
+    }
 }
 
 int main(int argc, char ** argv) {
@@ -76,4 +80,5 @@ int main(int argc, char ** argv) {
         }
         push_back(&s, &s_ss, &s_rs, c);
     }
+    exit_shell();
 }

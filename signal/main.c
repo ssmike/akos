@@ -5,6 +5,7 @@
 int ccol;
 
 
+
 void action(int snum, siginfo_t * sinfo, void * context) {
     char ff[10];
     if (ccol == 20) _exit(0);
