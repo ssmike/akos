@@ -141,9 +141,8 @@ void execute(struct job* x) {
     }
     print_job_desc(x);
     fflush(stdout);
-/*    waitpid(execute_job(x), 0, 0);
+    waitpid(execute_job(x), 0, 0);
     tcsetpgrp(tty_fd, getpgid(0));
-*/
     free_job(x);
 }
 
