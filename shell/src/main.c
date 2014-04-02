@@ -25,8 +25,10 @@ static void exec_s() {
         fflush(stderr);
     }
     free(s);
-    s = NULL;
-    s_ss = s_rs = 0;
+    s = (char*)malloc(sizeof(char));
+    if (s == NULL) exit(3);
+    s[0] = '\0';
+    s_ss = s_rs = sizeof(char);
 }
 
 int main(int argc, char ** argv) {
@@ -34,8 +36,10 @@ int main(int argc, char ** argv) {
     bool slash = false;
     bool comment = false;
     init_shell(argc, argv);
-    s_ss = s_rs = 0;
-    s = NULL;
+    s_ss = s_rs = sizeof(char);
+    s = (char*)malloc(sizeof(char));
+    if (s == NULL) exit(3);
+    s[0] = '\0';
     while(!feof(stdin)) {
         char c = getchar();
         if (comment) {
@@ -47,7 +51,7 @@ int main(int argc, char ** argv) {
         }
         if (slash) {
             if (c == '\n') {
-                s[(s_ss/sizeof(char)) - 1] = ' ';
+                s[(s_ss/sizeof(char)) - 2] = ' ';
             } else push_back(&s, &s_ss, &s_rs, c);
             slash = false;
             continue;

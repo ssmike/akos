@@ -47,11 +47,11 @@ void init_shell(int argc, char ** argv) {
     sprintf(buffer, "%d", argc);
     setvar("#", buffer);
 
-    for (i = 0; i <= argc; i++) {
+    for (i = 0; i < argc; i++) {
         buffer = (char*)malloc(10 * sizeof(char));
         if (buffer == NULL) exit(3);
         sprintf(buffer, "%d", i);
-        setvar(buffer, argv[i]);
+        setvar(buffer, strdup(argv[i]));
     }
     
     buffer = (char*)malloc(10 * sizeof(char));
@@ -80,7 +80,14 @@ void init_shell(int argc, char ** argv) {
 }
 
 void setvar(char * name, char * val){
+    size_t i;
     if (val == NULL) return;
+    for (i = 0; i < rvars_n; i++) {
+        if (strcmp(rvars[i].name, name) == 0) {
+            free(rvars[i].value);
+            rvars[i].value = val;
+        }
+    }
     increase((void**)&rvars, &rvars_sz, &rvars_rsz, sizeof(struct variable));
     if (errno != 0) return;
     rvars[rvars_n].name = name;

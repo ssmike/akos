@@ -12,7 +12,8 @@ void push_back(char ** s, size_t * s_ss, size_t * s_rs, char x) {
         fprintf(stderr, "memory allocation error");
         exit(3);
     }
-    (*s)[(*s_ss/sizeof(char)) - 1] = x;
+    (*s)[(*s_ss/sizeof(char)) - 2] = x;
+    (*s)[(*s_ss/sizeof(char)) - 1] = '\0';
 }
 
 void free_command(struct command * cm) {

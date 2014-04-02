@@ -292,12 +292,16 @@ static bool isChar(char x) {
 
 int replace_vars(char ** x) {
     int n = strlen(*x), i, j, k, tlen;
-    char * ans = NULL;
-    size_t anssz = 0;
-    size_t ansrsz = 0;
+    char * ans = (char*)malloc(sizeof(char));
+    size_t anssz = sizeof(char);
+    size_t ansrsz = sizeof(char);
     int quott = 0;
     bool slash = false;
     char * tmp, * tmp2;
+    if (ans == NULL) {
+        errno = ENOMEM;
+        return -1;
+    }
     for (i = 0; i < n; i++) {
         if (slash) {
             push_back(&ans, &anssz, &ansrsz, (*x)[i]);
