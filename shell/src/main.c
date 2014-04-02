@@ -25,8 +25,6 @@ static int type(char x) {
     return 0;
 }
 
-#include "getss.h"
-
 int main(int argc, char ** argv) {
     int quot = 0;
     bool slash = false;

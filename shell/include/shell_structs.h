@@ -2,6 +2,7 @@
 #define SHELL_STRUCTS_H
 
 #include <stdbool.h>
+#include <sys/types.h>
 
 struct command{
     char * input, * output;
@@ -9,6 +10,7 @@ struct command{
     char * name;
     char ** args;
     int argc;
+    pid_t pid;
 };
 
 struct job{
