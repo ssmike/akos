@@ -2,6 +2,45 @@
 #include <assert.h>
 #include <stdlib.h>
 #include "memmove.h"
+#include "shell_structs.h"
+
+#include <stdio.h>
+
+void push_back(char ** s, size_t * s_ss, size_t * s_rs, char x) {
+    increase((void**)s, s_ss, s_rs, sizeof(char));
+    if (errno == ENOMEM) {
+        fprintf(stderr, "memory allocation error");
+        exit(3);
+    }
+    (*s)[(*s_ss/sizeof(char)) - 1] = x;
+}
+
+void free_command(struct command * cm) {
+    int i;
+    if (cm->args != NULL)
+        for (i = 0; i < cm->argc; i++)
+            if (cm->args[i] != NULL)
+                free(cm->args[i]);
+    if (cm->name != NULL)
+        free(cm->name);
+    if (cm->input != NULL)
+        free(cm->input);
+    if (cm->output != NULL)
+        free(cm->output);
+    if (cm->args != NULL)
+        free(cm->args);
+    free(cm);
+}
+
+void free_job(struct job * jb) {
+    int i;
+    if (jb->commands != NULL) {
+        for (i = 0; i < jb->commandsc; i++)
+            free_command(jb->commands[i]);
+        free(jb->commands);
+    }
+    free(jb);
+}
 
 
 void increase(void ** arr, size_t * cur_sz, size_t * real_sz, size_t delta) {

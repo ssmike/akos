@@ -10,19 +10,23 @@
 char * s = NULL;
 size_t s_ss, s_rs;
 
-void push_back(char x) {
-    increase((void**)&s, &s_ss, &s_rs, sizeof(char));
-    if (errno != 0) {
-        fprintf(stderr, "memory allocation error");
-        exit(3);
-    }
-    s[(s_ss/sizeof(char)) - 1] = x;
-}
-
 static int type(char x) {
     if (x == '\'') return 1;
     if (x == '\"') return 2;
     return 0;
+}
+
+static void exec_s() {
+    struct job * jb = parse(s);
+    if (jb != NULL) {
+        execute(jb);
+    } else {
+        fprintf(stderr, "\n%s\n", PARSE_ERROR_MESSAGE);
+        fflush(stderr);
+    }
+    free(s);
+    s = NULL;
+    s_ss = s_rs = 0;
 }
 
 int main(int argc, char ** argv) {
@@ -35,39 +39,37 @@ int main(int argc, char ** argv) {
     while(!feof(stdin)) {
         char c = getchar();
         if (comment) {
-            if (c == '\n') comment = false;
+            if (c == '\n') {
+                comment = false;
+                exec_s();
+            }
             continue;
         }
         if (slash) {
             if (c == '\n') {
                 s[(s_ss/sizeof(char)) - 1] = ' ';
-            } else push_back(c);
+            } else push_back(&s, &s_ss, &s_rs, c);
             slash = false;
             continue;
         } 
         if (quot != 0) {
-            push_back(c);
+            push_back(&s, &s_ss, &s_rs, c);
             if (quot == type(c))
                 quot = 0;
             continue;
         }
         if (c == '\n' || c == ';') {
-            struct job * jb = parse(s);
-            if (jb != NULL) {
-                execute(jb);
-            } else {
-                fprintf(stderr, "\n%s\n", PARSE_ERROR_MESSAGE);
-                fflush(stderr);
-            }
-            free(s);
-            s = NULL;
-            s_ss = s_rs = 0;
+            exec_s();
             continue;
         }
         if (type(c) != 0)
             quot = type(c);
         if (c == '\\')
             slash = true;
-        push_back(c);
+        if (c == '#') {
+            comment = true;
+            continue;
+        }
+        push_back(&s, &s_ss, &s_rs, c);
     }
 }

@@ -1,3 +1,4 @@
+#include "exec.h"
 #include "argparse.h"
 #include "memmove.h"
 #include <stdlib.h>
@@ -5,33 +6,6 @@
 #include <string.h>
 #include <stdio.h>
 #include <errno.h>
-
-static void free_command(struct command * cm) {
-    int i;
-    if (cm->args != NULL)
-        for (i = 0; i < cm->argc; i++)
-            free(cm->args[i]);
-    if (cm->name != NULL)
-        free(cm->name);
-    if (cm->input != NULL)
-        free(cm->input);
-    if (cm->output != NULL)
-        free(cm->output);
-    if (cm->args != NULL)
-        free(cm->args);
-    free(cm);
-}
-
-static void free_job(struct job * jb) {
-    int i;
-    if (jb->commands != NULL) {
-        for (i = 0; i < jb->commandsc; i++)
-            free_command(jb->commands[i]);
-        free(jb->commands);
-    }
-    free(jb);
-}
-
 
 static bool bracket(char c) {
     return c == '<' || c == '>';
@@ -148,7 +122,7 @@ struct command * parse_command(char ** x, int n) {
                     free_command(cd);  \
                     return NULL;      \
                 }
-    int i;
+    int i, tst;
     size_t cd_ss = 0, cd_rs = 0;
     struct command * cd = trymalloc(sizeof(struct command));
     if (errno != 0) return NULL;
@@ -187,22 +161,25 @@ struct command * parse_command(char ** x, int n) {
            } else fail("invalid token");
            i++;
         } else {
-           if (i == 0) {
-              if ((cd->name = strdup(x[i])) == NULL) {
-                  free_command(cd);
-                  return NULL;
-              }
-           } else {
-               increase((void**)&(cd->args), &cd_ss, &cd_rs, sizeof(char*));
-               if (errno == 0) {
-                   cd->args[cd->argc] = strdup(x[i]);
-                   cd->argc += 1;
-               }
-               if (errno != 0 || cd->args[cd->argc - 1] == NULL) {
-                   free_command(cd);
-                   return NULL;
-               }
-           }
+            if (i == 0) {
+                cd->name = strdup(x[i]);
+                tst = replace_vars(&(cd->name));
+                if (tst != 0 || cd->name == NULL) {
+                    free_command(cd);
+                    return NULL;
+                }
+            } else {
+                increase((void**)&(cd->args), &cd_ss, &cd_rs, sizeof(char*));
+                if (errno == 0) {
+                    cd->args[cd->argc] = strdup(x[i]);
+                    tst = replace_vars(&cd->args[cd->argc]);
+                    cd->argc += 1;
+                }
+                if (errno != 0 || tst != 0 || cd->args[cd->argc - 1] == NULL) {
+                    free_command(cd);
+                    return NULL;
+                }
+            }
         }
     }
     
@@ -301,4 +278,91 @@ void print_job_desc(struct job * jb) {
     for (i = 0; i < jb->commandsc; i++) {
         print_command_desc(jb->commands[i]);
     }
+}
+
+static int type(char x) {
+    if (x == '\'') return 1;
+    if (x == '\"') return 2;
+    return 0;
+}
+
+static bool isChar(char x) {
+    return x != '\"' && x != '\'' && x != '}' && x != '{' && x != '$' && x != '\\';
+}
+
+int replace_vars(char ** x) {
+    int n = strlen(*x), i, j, k, tlen;
+    char * ans = NULL;
+    size_t anssz = 0;
+    size_t ansrsz = 0;
+    int quott = 0;
+    bool slash = false;
+    char * tmp, * tmp2;
+    for (i = 0; i < n; i++) {
+        if (slash) {
+            push_back(&ans, &anssz, &ansrsz, (*x)[i]);
+            slash = false;
+            continue;
+        }
+        if ((*x)[i] == '$' && (quott & 1) == 0) {
+            if (i != n - 1 && (*x)[i + 1] == '{') {
+                j = i + 2;
+                while (j < n && (*x)[j] != '}') j++;
+                if (j == n) {
+                    PARSE_ERROR_MESSAGE = "bad substitution";
+                    free(ans);
+                    return -1;
+                }
+                if ((tmp = strndup((*x) + i + 2, j - i - 2)) == NULL) {
+                    errno = ENOMEM;
+                    free(ans);
+                    return -1;
+                }
+                tmp2 = findvar(tmp);
+                tlen = strlen(tmp2);
+                for (k = 0; k < tlen; k++)
+                    push_back(&ans, &anssz, &ansrsz, tmp2[k]);
+                i = j;
+            } else {
+                j = i + 1;
+                while (j < n && isChar((*x)[j])) j++;
+                if ((tmp = strndup((*x) + i + 1, j - i - 1)) == NULL) {
+                    errno = ENOMEM;
+                    free(ans);
+                    return -1;
+                }
+                tmp2 = findvar(tmp);
+                tlen = strlen(tmp2);
+                for (k = 0; k < tlen; k++)
+                    push_back(&ans, &anssz, &ansrsz, tmp2[k]);
+                i = j - 1;
+            }
+            continue;
+        }
+        if (quott) {
+            if (type((*x)[i]) == quott)
+                quott = false;
+            else push_back(&ans, &anssz, &ansrsz, (*x)[i]);
+            continue;
+        }
+
+        if (type((*x)[i]) != 0) {
+            quott = type((*x)[i]);
+            continue;
+        }
+        if ((*x)[i] == '\\') {
+            slash = true;
+            continue;
+        }
+        push_back(&ans, &anssz, &ansrsz, (*x)[i]);
+    }
+    push_back(&ans, &anssz, &ansrsz, '\0');
+    truncate_mem((void**)&ans, &anssz, &ansrsz);
+    if (errno != 0) {
+        free(ans);
+        return -1;
+    }
+    free(*x);
+    (*x) = ans;
+    return 0;
 }

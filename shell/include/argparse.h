@@ -16,5 +16,6 @@ char ** parseCTokens(char * x, int * sz);
 char * PARSE_ERROR_MESSAGE;
 struct command * parse_command(char ** x, int n);
 void print_command_desc(struct command *);
+int replace_vars(char **);
 
 #endif

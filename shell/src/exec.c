@@ -4,12 +4,21 @@
 #include "memmove.h"
 #include <errno.h>
 #include <stdlib.h>
+#include <unistd.h>
 
 /*for print job desc (debug) */
 #include "argparse.h"
 #include <stdio.h>
 
+struct variable{
+    char * name;
+    char * value;
+};
 
+size_t rvars_sz, rvars_rsz, rvars_n;
+struct variable * rvars;
+
+int status;
 
 void execute(struct job* x) {
 /*    int i, j;
@@ -20,92 +29,79 @@ void execute(struct job* x) {
     }*/
     print_job_desc(x);
     fflush(stdout);
+    free_job(x);
 }
+
+extern int gethostname(char *name, size_t len);
+extern ssize_t readlink(const char *path, char *buf, size_t bufsiz);
 
 void init_shell(int argc, char ** argv) {
-}
+    int i;
+    char * buffer;
+    rvars_n = rvars_sz = rvars_rsz = 0;
+    rvars = NULL;
+    status = 0;
 
+    buffer = (char*)malloc(10 * sizeof(char));
+    if (buffer == NULL) exit(3);
+    sprintf(buffer, "%d", argc);
+    setvar("#", buffer);
 
-static void push_back(char ** s, size_t * s_ss, size_t * s_rs, char x) {
-    increase((void**)s, s_ss, s_rs, sizeof(char));
-    if (errno != 0) {
-        fprintf(stderr, "memory allocation error");
-        exit(3);
+    for (i = 0; i <= argc; i++) {
+        buffer = (char*)malloc(10 * sizeof(char));
+        if (buffer == NULL) exit(3);
+        sprintf(buffer, "%d", i);
+        setvar(buffer, argv[i]);
     }
-    (*s)[(*s_ss/sizeof(char)) - 1] = x;
+    
+    buffer = (char*)malloc(10 * sizeof(char));
+    if (buffer == NULL) exit(3);
+    sprintf(buffer, "%d", getuid());
+    setvar("UID", buffer);
+
+    buffer = (char*)malloc(10 * sizeof(char));
+    if (buffer == NULL) exit(3);
+    sprintf(buffer, "%d", getpid());
+    setvar("PID", buffer);
+
+    buffer = (char*)malloc(40 * sizeof(char));
+    if (buffer == NULL) exit(3);
+    gethostname(buffer, 39);
+    errno = 0;
+    setvar("HOSTNAME", buffer);
+
+    buffer = (char*)malloc(200 * sizeof(char));
+    if (buffer == NULL) exit(3);
+    readlink("/proc/self/exe", buffer, sizeof(char) * 200);
+    errno = 0;
+    setvar("SHELL", buffer);
+    
+   /*setvar("");*/
 }
 
-static char * findvar(char * name) {
-    return getenv(name);
+void setvar(char * name, char * val){
+    if (val == NULL) return;
+    increase((void**)&rvars, &rvars_sz, &rvars_rsz, sizeof(struct variable));
+    if (errno != 0) return;
+    rvars[rvars_n].name = name;
+    rvars[rvars_n].value = val;
+    rvars_n++;
 }
 
-static int type(char x) {
-    if (x == '\'') return 1;
-    if (x == '\"') return 2;
-    return 0;
-}
-
-static bool isChar(char x) {
-    return x != '\"' && x != '\'' && x != '}' && x != '{' && x != '$' && x != '\\';
-}
-
-int replace_vars(char ** x) {
-    int n = strlen(*x), i, j, k, tlen;
-    char * ans = NULL;
-    size_t anssz = 0;
-    size_t ansrsz = 0;
-    int quott = 0;
-    bool slash = false;
-    char * tmp, * tmp2;
-    for (i = 0; i < n; i++) {
-        if (slash) {
-            push_back(&ans, &anssz, &ansrsz, *x[i]);
-            slash = false;
-            continue;
-        }
-        if (quott) {
-            if (type(*x[i]) == quott)
-                quott = false;
-            else push_back(&ans, &anssz, &ansrsz, *x[i]);
-            continue;
-        }
-        if (*x[i] == '$') {
-            if (i != n - 1 && *x[i + 1] == '{') {
-                j = i + 2;
-                while (j < n && *x[j] != '}') j++;
-                if (j == n) {
-                    PARSE_ERROR_MESSAGE = "bad substitution";
-                    free(ans);
-                    return -1;
-                }
-                if ((tmp = strndup(*x + i + 2, j - i - 2)) == NULL) {
-                    errno = ENOMEM;
-                    free(ans);
-                    return -1;
-                }
-                tmp2 = findvar(tmp);
-                tlen = strlen(tmp2);
-                for (k = 0; k < tlen; k++)
-                    push_back(&ans, &anssz, &ansrsz, tmp2[k]);
-                i = j;
-            } else {
-                j = i + 1;
-                while (j < n && isChar(*x[j])) j++;
-                if ((tmp = strndup(*x + i + 1, j - i - 1)) == NULL) {
-                    errno = ENOMEM;
-                    free(ans);
-                    return -1;
-                }
-                tmp2 = findvar(tmp);
-                tlen = strlen(tmp2);
-                for (k = 0; k < tlen; k++)
-                    push_back(&ans, &anssz, &ansrsz, tmp2[k]);
-                i = j - 1;
-            }
-            continue;
-        }
-        push_back(&ans, &anssz, &ansrsz, *x[i]);
+char * findvar(char * name) {
+    char * tmp, *buffer;
+    size_t i;
+    if (strcmp(name, "?") == 0) {
+        buffer = (char*)malloc(10 * sizeof(char));
+        if (buffer == NULL) exit(3);
+        printf(buffer, "%d", status);
+        return buffer;
     }
-    *x = ans;
-    return 0;
+    for (i = 0; i < rvars_n; i++) {
+        if (strcmp(rvars[i].name, name) == 0)
+            return rvars[i].value;
+    }
+    tmp = getenv(name);
+    if (tmp == NULL) return "";
+    else return tmp;
 }
