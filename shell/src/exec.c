@@ -204,6 +204,7 @@ static pid_t execute_job(struct job * jb) {
     signal(SIGUSR1, catcher);*/
     if ((ctl = fork()) == 0) {
         if (debug) fprintf(stderr, "controller pid - %d\ncommand output------------------\n", getpid());
+        signal(SIGTSTP, SIG_DFL);
         /*if (!usr1_lock) pause(); */
         res = 0;
         /*if (!jb->background)
@@ -243,7 +244,7 @@ static pid_t execute_job(struct job * jb) {
             pinp = pp[0];
         }
         foreground = jb;
-        for (i = 0; i < jb->commandsc; i++) {
+        while (errno != ECHILD) {
             if (wait(&st) == jb->commands[jb->commandsc - 1]->pid)
                 res = WEXITSTATUS(st);
         }
@@ -301,6 +302,8 @@ void execute(struct job* x) {
         tcsetpgrp(tty_fd, getpgid(getpid()));
         if (WIFSTOPPED(st)) {
             add_background_job(x, ctl);
+            printf("command went to background\n");
+            fflush(stdout);
         } else {
             if (WEXITSTATUS(st) != 0)
                 printf("command exited with status %d\n", WEXITSTATUS(st));
