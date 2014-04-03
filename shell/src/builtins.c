@@ -4,8 +4,9 @@
 #include "argparse.h"
 
 int jobs(struct command * t);
+int pwd(struct command * t);
 
-char * builtin_names[builtins_n] = {"jobs"};
+char * builtin_names[builtins_n] = {"jobs", "pwd"};
 builtin functions[builtins_n] = {&jobs};
 
 
@@ -16,4 +17,10 @@ int jobs(struct command * t) {
         printf("id : %d\n", i);
         print_job_desc(background_jobs[i]);
     }
+    return 0;
+}
+
+int pwd(struct command * t) {
+    printf("%s", getenv("PWD"));
+    return 0;
 }

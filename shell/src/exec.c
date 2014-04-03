@@ -15,7 +15,7 @@
 #include "argparse.h"
 #include <stdio.h>
 
-
+extern int setenv(const char *name, const char *value, int overwrite);
 extern int setpgrp(void);
 extern pid_t getpgid(pid_t);
 extern int gethostname(char *name, size_t len);
@@ -62,23 +62,63 @@ static void delete_pid(pid_t p) {
 }
 
 static bool builtin_hook(struct job * x) {
-    int st;
+    int st, i, l;
     int dd;
+    char * ss;
     if (x->commandsc == 1) {
         if (strcmp(x->commands[0]->name, "exit") == 0) {
             exit_shell();
         }
-        if (strcmp(x->commands[0]->name, "fg") == 0) {
-            if (background_jobs_n == 0) {
-                printf("no current jobs\n");
-                fflush(stdout);
-                return true;
-            }
+        if (strcmp(x->commands[0]->name, "cd") == 0) {
+            if (x->commands[0]->argc < 2) return true;
+            chdir(x->commands[0]->args[1]);
+            return true;
+        }
+        if (strcmp(x->commands[0]->name, "export") == 0) {
+            if (x->commands[0]->argc < 2) return true;
+            l = strlen(x->commands[0]->args[1]);
+            for (i = 0; i < l && x->commands[0]->args[1][i] != '='; i++);
+            ss = x->commands[0]->args[1];
+            if (i == l) return true;
+            ss[i] = '\0';
+            setenv(ss, ss + i + 1, 1);
+            ss[i] = '=';
+            return true;
+        }
+        if (strcmp(x->commands[0]->name, "bg") == 0) {
             if (x->commands[0]->argc < 2) {
                 dd = background_jobs_n - 1;
             } else {
                 if (1 != sscanf(x->commands[0]->args[1], "%%%d", &dd))
                     return false;
+            }
+            if (dd < 0 || dd >= background_jobs_n) {
+                printf("no such job\n");
+                fflush(stdout);
+                return true;
+            }
+            kill(-background[dd], SIGCONT);
+            waitpid(background[dd], &st, WUNTRACED | WNOHANG);
+            if (WIFSTOPPED(status)) {
+                return true;
+            } else {
+                printf("command exited with status %d\n", WEXITSTATUS(st));
+                delete_pid(background[dd]);
+                status = st;
+                return true;
+            }
+        }
+        if (strcmp(x->commands[0]->name, "fg") == 0) {
+            if (x->commands[0]->argc < 2) {
+                dd = background_jobs_n - 1;
+            } else {
+                if (1 != sscanf(x->commands[0]->args[1], "%%%d", &dd))
+                    return false;
+            }
+            if (dd < 0 || dd >= background_jobs_n) {
+                printf("no such job\n");
+                fflush(stdout);
+                return true;
             }
             tcsetpgrp(tty_fd, getpgid(background[dd]));
             kill(-background[dd], SIGCONT);
@@ -151,14 +191,14 @@ static pid_t execute_job(struct job * jb) {
     int i, pinp = 0, fd, st, res;
     pid_t ctl;
     int pp[2];
-    usr1_lock = false;
-    signal(SIGUSR1, catcher);
+    /*usr1_lock = false;
+    signal(SIGUSR1, catcher);*/
     if ((ctl = fork()) == 0) {
         if (debug) fprintf(stderr, "controller pid - %d\ncommand output------------------\n", getpid());
-        if (!usr1_lock) pause();
+        /*if (!usr1_lock) pause(); */
         res = 0;
-        if (!jb->background)
-            tcsetpgrp(tty_fd, getpgid(getpid()));
+        /*if (!jb->background)
+            tcsetpgrp(tty_fd, getpgid(getpid()));*/
         for (i = 0; i < jb->commandsc; i++) {
             if (i != jb->commandsc - 1) {
                 pipe(pp);
@@ -204,7 +244,7 @@ static pid_t execute_job(struct job * jb) {
     setpgid(ctl, ctl);
     if (is_interactive && !jb->background)
         tcsetpgrp(tty_fd, getpgid(ctl));
-    kill(ctl, SIGUSR1);
+    kill(-ctl, SIGCONT);
     return ctl;
 }
 
