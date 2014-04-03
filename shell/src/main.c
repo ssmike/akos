@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <errno.h>
 #include <unistd.h>
+#include <string.h>
 
 int geterrno() {
     return errno;
@@ -37,6 +38,38 @@ static void exec_s() {
         free(s);
         exit(3);
     }
+    zombie_clr();
+}
+
+#include "getss.h"
+
+int getc_buf_len;
+char * getc_buf = NULL;
+int getc_buf_pos;
+
+bool allspaces_s() {
+    int slen = strlen(s), i;
+    for (i = 0; i < slen; i++) {
+        if (s[i] != ' ')
+            return false;
+    }
+    return true;
+}
+
+char prgetc() {
+    while (getc_buf_pos == getc_buf_len || getc_buf == NULL) {
+        if (is_interactive) {
+            if (allspaces_s()) printf("> ");
+            else printf("| ");
+            fflush(stdout);
+        }
+        if ((getc_buf_len = getss(&getc_buf)) < 0) {
+            printf("failed to read\n");
+            exit(3);
+        }
+        getc_buf_pos = 0;
+    }
+    return getc_buf[getc_buf_pos++];
 }
 
 int main(int argc, char ** argv) {
@@ -44,6 +77,7 @@ int main(int argc, char ** argv) {
     int quot = 0;
     bool slash = false;
     bool comment = false;
+
     is_interactive = isatty(0);
     init_shell(argc, argv);
     s_ss = s_rs = sizeof(char);
@@ -52,8 +86,7 @@ int main(int argc, char ** argv) {
     s[0] = '\0';
     while(!feof(stdin)) {
         if (errno == EINTR) errno = 0;
-        c = getchar();
-        /*if (c == EOF) continue;*/
+        c = prgetc();
         if (comment) {
             if (c == '\n') {
                 comment = false;

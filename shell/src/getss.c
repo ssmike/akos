@@ -69,14 +69,15 @@ int fgetss_(FILE * fin, char ** res, size_t lim)
         *res = buf;
         return LIMIT_EXCEEDED;
     }
-    tmp = realloc(buf, sz + sizeof(char));
+    tmp = realloc(buf, sz + 2 * sizeof(char));
     if (tmp == NULL)
     {
         *res = buf;
         return ALLOCATION_FAILED;
     }
     else buf = tmp;
-    buf[sz/sizeof(char)] = '\0';
+    buf[sz/sizeof(char) + 1] = '\0';
+    buf[sz/sizeof(char)] = '\n';
     *res = buf;
-    return sz;
+    return sz + 1;
 }

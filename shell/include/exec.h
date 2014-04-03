@@ -6,7 +6,8 @@
 
 struct job;
 
-
+extern bool debug;
+extern void zombie_clr();
 extern bool is_interactive;
 extern struct job ** background_jobs;
 extern int background_jobs_n;

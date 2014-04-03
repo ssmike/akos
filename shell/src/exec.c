@@ -37,6 +37,7 @@ static void signal_handler(int sn) {
     }
 }
 
+bool debug;
 bool is_interactive;
 int background_jobs_n;
 struct job ** background_jobs;
@@ -125,7 +126,7 @@ static void exec_com(struct command * cs) {
     fflush(stdout);
     _exit(10);
 }
-
+/*
 static void controller_signal_handler(int sn) {
     if (sn == SIGTSTP) {
         tcsetpgrp(tty_fd, getpgid(getppid()));
@@ -136,13 +137,14 @@ static void controller_signal_handler(int sn) {
         _exit(2);
     }
 }
-
+*/
 
 int kill(pid_t pid, int sig);
 static bool usr1_lock;
 
 static void catcher(int sn) {
     usr1_lock = true;
+    return;
 }
 
 static pid_t execute_job(struct job * jb) {
@@ -152,7 +154,7 @@ static pid_t execute_job(struct job * jb) {
     usr1_lock = false;
     signal(SIGUSR1, catcher);
     if ((ctl = fork()) == 0) {
-        fprintf(stderr, "controller pid - %d\ncommand output------------------\n", getpid());
+        if (debug) fprintf(stderr, "controller pid - %d\ncommand output------------------\n", getpid());
         if (!usr1_lock) pause();
         res = 0;
         if (!jb->background)
@@ -192,15 +194,11 @@ static pid_t execute_job(struct job * jb) {
             pinp = pp[0];
         }
         foreground = jb;
-        signal(SIGTSTP, controller_signal_handler);
-        signal(SIGINT, controller_signal_handler);
         for (i = 0; i < jb->commandsc; i++) {
             if (wait(&st) == jb->commands[jb->commandsc - 1]->pid)
                 res = WEXITSTATUS(st);
         }
-        fprintf(stderr, "tgetpgrp == %d, pgrp == %d, ppgrp == %d\n", tcgetpgrp(tty_fd), getpgid(getpid()), getpgid(getppid()));
-        /*if (is_interactive && tcgetpgrp(tty_fd) == getpgid(getpid()))
-            tcsetpgrp(tty_fd, getpgid(getppid()));*/
+        if (debug) fprintf(stderr, "tgetpgrp == %d, pgrp == %d, ppgrp == %d\n", tcgetpgrp(tty_fd), getpgid(getpid()), getpgid(getppid()));
         _exit(res);
     }
     setpgid(ctl, ctl);
@@ -219,13 +217,22 @@ static void add_background_job(struct job * x, pid_t ctl) {
     background_jobs[background_jobs_n] = x;
     background_jobs_n++;
 }
-
-static void zombie_clr() {
+/*
+static int findpid(pid_t p) {
+    int i;
+    for (i = 0; i < background_jobs_n; i++) {
+        if (background[i] == p)
+            return i;
+    }
+    return -1;
+}
+*/
+void zombie_clr() {
     int st, i, res;
     for (i = 0; i < background_jobs_n; i++) {
         res = waitpid(background[i], &st, WNOHANG);
         if (res != 0 && res != -1) {
-            printf("PID %d exited with %d\n", background[i], WEXITSTATUS(st));
+            printf("job %d exited with %d\n", i, WEXITSTATUS(st));
             status = st;
             delete_pid(background[i--]);
         }
@@ -238,9 +245,11 @@ void execute(struct job* x) {
         free_job(x);
         return;
     }
-    printf("my group - %d, term control - %d\n", getpgrp(), tcgetpgrp(tty_fd));
-    print_job_desc(x);
-    fflush(stdout);
+    if (debug) {
+        printf("my group - %d, term control - %d\n", getpgrp(), tcgetpgrp(tty_fd));
+        print_job_desc(x);
+        fflush(stdout);
+    }
     if (x->background) {
         add_background_job(x, execute_job(x));
     } else {
@@ -251,7 +260,8 @@ void execute(struct job* x) {
         if (WIFSTOPPED(st)) {
             add_background_job(x, ctl);
         } else {
-            printf("command %d exited with status %d\n", ctl, WEXITSTATUS(st));
+            if (WEXITSTATUS(st) != 0)
+                printf("command exited with status %d\n", WEXITSTATUS(st));
             fflush(stdout);
             status = st;
             free_job(x);
@@ -259,7 +269,6 @@ void execute(struct job* x) {
     }
     if (!x->background)
         tcsetpgrp(tty_fd, getpgrp());
-    zombie_clr();
 }
 
 static void clr_signals() {
@@ -275,8 +284,12 @@ void init_shell(int argc, char ** argv) {
     int i;
     char * buffer;
     background_jobs_n = 0;
-    fprintf(stderr, "%d - PID\n", getpid());
 
+    debug = false;
+    for (i = 0; i < argc; i++)
+        if (strcmp("--debug", argv[i]) == 0)
+            debug = true;
+    if (debug) fprintf(stderr, "%d - PID\n", getpid());
     if (is_interactive) {
         tty_fd = open(ctermid(NULL), O_RDONLY, 0);
         tcsetpgrp(tty_fd, getpgrp());
