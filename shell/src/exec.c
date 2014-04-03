@@ -198,8 +198,8 @@ static pid_t execute_job(struct job * jb) {
                 res = WEXITSTATUS(st);
         }
         fprintf(stderr, "tgetpgrp == %d, pgrp == %d, ppgrp == %d\n", tcgetpgrp(tty_fd), getpgid(getpid()), getpgid(getppid()));
-        if (is_interactive && tcgetpgrp(tty_fd) == getpgid(getpid()))
-            tcsetpgrp(tty_fd, getpgid(getppid()));
+        /*if (is_interactive && tcgetpgrp(tty_fd) == getpgid(getpid()))
+            tcsetpgrp(tty_fd, getpgid(getppid()));*/
         _exit(res);
     }
     setpgid(ctl, ctl);
@@ -267,6 +267,7 @@ static void clr_signals() {
     signal(SIGINT, SIG_DFL);
     signal(SIGUSR1, SIG_DFL);
     signal(SIGUSR2, SIG_DFL);
+    signal(SIGTTOU, SIG_DFL);
 }
 
 void init_shell(int argc, char ** argv) {
@@ -280,6 +281,7 @@ void init_shell(int argc, char ** argv) {
         tcsetpgrp(tty_fd, getpgrp());
     }
     bsz = brsz = bjsz = bjrsz = 0;
+    signal(SIGTTOU, SIG_IGN);
     signal(SIGTSTP, signal_handler);
     signal(SIGINT, signal_handler);
     /*signal(SIGCHLD, signal_handler);*/
