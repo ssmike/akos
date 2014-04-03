@@ -71,7 +71,8 @@ static bool builtin_hook(struct job * x) {
             if (x->commands[0]->argc < 2) {
                 dd = background_jobs_n - 1;
             } else {
-                sscanf(x->commands[0]->args[1], "%d", &dd);
+                if (1 != sscanf(x->commands[0]->args[1], "%%%d", &dd))
+                    return false;
             }
             tcsetpgrp(tty_fd, getpgid(background[dd]));
             kill(-background[dd], SIGCONT);
@@ -167,9 +168,9 @@ static pid_t execute_job(struct job * jb) {
                 }
                 if (jb->commands[i]->output != NULL) {
                     if (jb->commands[i]->out_append)
-                        fd = open(jb->commands[i]->input, O_CREAT | O_APPEND | O_WRONLY, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+                        fd = open(jb->commands[i]->output, O_CREAT | O_APPEND | O_WRONLY, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
                     else 
-                        fd = open(jb->commands[i]->input, O_CREAT | O_WRONLY, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+                        fd = open(jb->commands[i]->output, O_CREAT | O_WRONLY, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
                     dup2(fd, 1);
                     close(fd);
                 }
