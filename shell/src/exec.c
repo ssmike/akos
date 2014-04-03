@@ -1,3 +1,4 @@
+#include "builtins.h"
 #include "exec.h"
 #include "shell_structs.h"
 #include <string.h>
@@ -13,7 +14,13 @@
 /*for print job desc (debug) */
 #include "argparse.h"
 #include <stdio.h>
-#include "builtins.h"
+
+
+extern int setpgrp(void);
+extern pid_t getpgid(pid_t);
+extern int gethostname(char *name, size_t len);
+extern ssize_t readlink(const char *path, char *buf, size_t bufsiz);
+extern char *ctermid(char *);
 
 struct variable{
     char * name;
@@ -21,9 +28,6 @@ struct variable{
 };
 
 static void signal_handler(int sn) {
-    if (sn == SIGTTIN) {
-        fputs("SIGTTIN", stderr);
-    }
     if (sn == SIGTSTP) {
         fputs("SIGTSTP", stderr);
     }
@@ -32,9 +36,11 @@ static void signal_handler(int sn) {
     }
 }
 
-struct pid_t ** background;
+int background_jobs_n;
+struct job ** background_jobs;
+pid_t * background;
 struct job * foreground;
-size_t bsz, brsz;
+size_t bsz, brsz, bjsz, bjrsz;
 pid_t for_c_pid;
 
 size_t rvars_sz, rvars_rsz, rvars_n;
@@ -44,6 +50,11 @@ static int tty_fd;
 int status;
 
 static bool builtin_hook(struct job * x) {
+    if (x->commandsc == 1) {
+        if (strcmp(x->commands[0]->name, "exit") == 0) {
+            exit_shell();
+        }
+    }
     return false;
 }
 
@@ -67,24 +78,41 @@ static void builtin_exec(struct command * cs) {
     exit(10); 
 }
 
+static void clr_signals();
 static void exec_com(struct command * cs) {
+    clr_signals();
     if (builtin_find(cs->name)) builtin_exec(cs);
     execvp(cs->name, cs->args);
     exit(10);
 }
 
-static void controller_signal_handler(int snum) {
-    
+static void controller_signal_handler(int sn) {
+    if (sn == SIGTSTP) {
+        tcsetpgrp(tty_fd, getpgid(getppid()));
+    }
+    if (sn == SIGINT) {
+        tcsetpgrp(tty_fd, getpgid(getppid()));
+        _exit(2);
+    }
 }
 
-extern int setpgrp(void);
+
+int kill(pid_t pid, int sig);
+static bool usr1_lock;
+
+static void catcher(int sn) {
+    usr1_lock = true;
+}
 
 static pid_t execute_job(struct job * jb) {
     int i, pinp = 0, fd, st, res;
     pid_t ctl;
     int pp[2];
+    usr1_lock = false;
+    signal(SIGUSR1, catcher);
     if ((ctl = fork()) == 0) {
-        setpgid(0, 0);
+        fprintf(stderr, "controller pid - %d\n", getpid());
+        if (!usr1_lock) pause();
         res = true;
         for (i = 0; i < jb->commandsc; i++) {
             if (i != jb->commandsc - 1) {
@@ -126,12 +154,43 @@ static pid_t execute_job(struct job * jb) {
             if (wait(&st) == jb->commands[jb->commandsc - 1]->pid)
                 res = st;
         }
-        exit(st);
+        tcsetpgrp(tty_fd, getpgid(getppid()));
+        exit(res);
     }
-    if (!jb->background) {
-        tcsetpgrp(tty_fd, getpgid(ctl));
-    }
+    setpgid(ctl, ctl);
+    if (!jb->background)
+        tcsetpgrp(tty_fd, ctl);
+    kill(ctl, SIGUSR1);
     return ctl;
+}
+
+static void add_background_job(struct job * x, pid_t ctl) {
+    increase((void**)&background_jobs, &bjsz, &bjrsz, sizeof(struct job *));
+    increase((void**)&background, &bsz, &brsz, sizeof(struct job *));
+    if (errno == ENOMEM)
+        exit_shell();
+    background[background_jobs_n] = ctl;
+    background_jobs[background_jobs_n] = x;
+    background_jobs_n++;
+}
+
+static void delete_pid(pid_t p) {
+    int i, j;
+    for (i = 0; background[i] != p && i < background_jobs_n; i++);
+    if (i == background_jobs_n) return;
+    for (j = i; j < background_jobs_n; j++)
+        background[j] = background[j + 1];
+    background_jobs_n--;
+}
+
+static void zombie_clr() {
+    pid_t died;
+    int st;
+    while ((died = waitpid(-1, &st, WNOHANG)) != -1) {
+        printf("PID exited: %d", died);
+        status = st;
+        delete_pid(died);
+    }
 }
 
 void execute(struct job* x) {
@@ -141,26 +200,45 @@ void execute(struct job* x) {
     }
     print_job_desc(x);
     fflush(stdout);
-    waitpid(execute_job(x), 0, 0);
+    if (x->background) {
+        add_background_job(x, execute_job(x));
+    } else {
+        pid_t ctl = execute_job(x);
+        int status;
+        waitpid(ctl, &status, WUNTRACED);
+        if (WIFSTOPPED(status)) {
+            add_background_job(x, ctl);
+        } else {
+            free_job(x);
+        }
+    }
     if (!x->background)
-        tcsetpgrp(tty_fd, getpgid(0));
-    free_job(x);
+        tcsetpgrp(tty_fd, getpgrp());
+    zombie_clr();
 }
 
-extern int gethostname(char *name, size_t len);
-extern ssize_t readlink(const char *path, char *buf, size_t bufsiz);
-extern char *ctermid(char *);
+static void clr_signals() {
+    signal(SIGTSTP, SIG_DFL);
+    signal(SIGCHLD, SIG_DFL);
+    signal(SIGINT, SIG_DFL);
+    signal(SIGUSR1, SIG_DFL);
+    signal(SIGUSR2, SIG_DFL);
+}
 
 void init_shell(int argc, char ** argv) {
     int i;
     char * buffer;
+    background_jobs_n = 0;
+    fprintf(stderr, "%d - PID\n", getpid());
     tty_fd = open(ctermid(NULL), O_RDONLY, 0);
-    bsz = brsz = 0;
+    tcsetpgrp(tty_fd, getpgrp());
+    bsz = brsz = bjsz = bjrsz = 0;
     signal(SIGTSTP, signal_handler);
     signal(SIGINT, signal_handler);
-    signal(SIGTTIN, signal_handler);
+    signal(SIGCHLD, signal_handler);
     background = NULL;
     foreground = NULL;
+    background_jobs = NULL;
     rvars_n = rvars_sz = rvars_rsz = 0;
     rvars = NULL;
     status = 0;
@@ -232,10 +310,12 @@ char * findvar(char * name) {
     }
     tmp = getenv(name);
     if (tmp == NULL) {
-        return "";
+       return "";
     }
     else return tmp;
 }
 
 void exit_shell() {
+    /*free(background_jobs);*/
+    exit(0);
 }

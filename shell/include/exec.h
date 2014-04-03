@@ -5,13 +5,16 @@
 
 struct job;
 
-extern struct pid_t ** background;
+
+extern struct job ** background_jobs;
+extern int background_jobs_n;
+extern pid_t * background;
 extern struct job * foreground;
 extern pid_t for_c_pid;
-void execute(struct job*);
-void init_shell(int argc, char ** argv);
-void exit_shell();
-void setvar(char * name, char * val);
-char * findvar(char * name);
+extern void execute(struct job*);
+extern void init_shell(int argc, char ** argv);
+extern void exit_shell();
+extern void setvar(char * name, char * val);
+extern char * findvar(char * name);
 
 #endif

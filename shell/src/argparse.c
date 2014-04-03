@@ -188,10 +188,13 @@ struct command * parse_command(char ** x, int n) {
             }
         }
     }
-    
+    increase((void**)&(cd->args), &cd_ss, &cd_rs, sizeof(char*));
+    truncate_mem((void**)&(cd->args), &cd_ss, &cd_rs);
     if (errno != 0) {
         free_command(cd);
         return NULL;
+    } else {
+        cd->args[cd->argc] = NULL;
     }
     return cd;
 #undef fail
