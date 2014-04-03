@@ -68,6 +68,11 @@ static bool builtin_hook(struct job * x) {
             exit_shell();
         }
         if (strcmp(x->commands[0]->name, "fg") == 0) {
+            if (background_jobs_n == 0) {
+                printf("no current jobs\n");
+                fflush(stdout);
+                return true;
+            }
             if (x->commands[0]->argc < 2) {
                 dd = background_jobs_n - 1;
             } else {
@@ -80,7 +85,7 @@ static bool builtin_hook(struct job * x) {
             if (WIFSTOPPED(status)) {
                 return true;
             } else {
-                printf("command exited with status %d\n", st);
+                printf("command exited with status %d\n", WEXITSTATUS(st));
                 delete_pid(background[dd]);
                 status = st;
                 return true;
@@ -107,7 +112,7 @@ static void builtin_exec(struct command * cs) {
             exit((*functions[i])(cs));
         }
     }
-    exit(10); 
+    _exit(10); 
 }
 
 static void clr_signals();
@@ -116,12 +121,14 @@ static void exec_com(struct command * cs) {
     if (builtin_find(cs->name)) builtin_exec(cs);
     execvp(cs->name, cs->args);
     printf("command not found\n");
-    exit(10);
+    fflush(stdout);
+    _exit(10);
 }
 
 static void controller_signal_handler(int sn) {
     if (sn == SIGTSTP) {
         tcsetpgrp(tty_fd, getpgid(getppid()));
+        pause();
     }
     if (sn == SIGINT) {
         tcsetpgrp(tty_fd, getpgid(getppid()));
@@ -146,7 +153,9 @@ static pid_t execute_job(struct job * jb) {
     if ((ctl = fork()) == 0) {
         fprintf(stderr, "controller pid - %d\ncommand output------------------\n", getpid());
         if (!usr1_lock) pause();
-        res = true;
+        res = 0;
+        if (!jb->background)
+            tcsetpgrp(tty_fd, getpgid(getpid()));
         for (i = 0; i < jb->commandsc; i++) {
             if (i != jb->commandsc - 1) {
                 pipe(pp);
@@ -186,15 +195,16 @@ static pid_t execute_job(struct job * jb) {
         signal(SIGINT, controller_signal_handler);
         for (i = 0; i < jb->commandsc; i++) {
             if (wait(&st) == jb->commands[jb->commandsc - 1]->pid)
-                res = st;
+                res = WEXITSTATUS(st);
         }
-        if (is_interactive)
+        fprintf(stderr, "tgetpgrp == %d, pgrp == %d, ppgrp == %d\n", tcgetpgrp(tty_fd), getpgid(getpid()), getpgid(getppid()));
+        if (is_interactive && tcgetpgrp(tty_fd) == getpgid(getpid()))
             tcsetpgrp(tty_fd, getpgid(getppid()));
-        exit(res);
+        _exit(res);
     }
     setpgid(ctl, ctl);
     if (is_interactive && !jb->background)
-        tcsetpgrp(tty_fd, ctl);
+        tcsetpgrp(tty_fd, getpgid(ctl));
     kill(ctl, SIGUSR1);
     return ctl;
 }
@@ -214,7 +224,7 @@ static void zombie_clr() {
     for (i = 0; i < background_jobs_n; i++) {
         res = waitpid(background[i], &st, WNOHANG);
         if (res != 0 && res != -1) {
-            printf("PID exited: %d\n", background[i]);
+            printf("PID %d exited with %d\n", background[i], WEXITSTATUS(st));
             status = st;
             delete_pid(background[i--]);
         }
@@ -236,10 +246,12 @@ void execute(struct job* x) {
         pid_t ctl = execute_job(x);
         int st;
         waitpid(ctl, &st, WUNTRACED);
+        tcsetpgrp(tty_fd, getpgid(getpid()));
         if (WIFSTOPPED(st)) {
             add_background_job(x, ctl);
         } else {
-            printf("command exited with status %d\n", st);
+            printf("command %d exited with status %d\n", ctl, WEXITSTATUS(st));
+            fflush(stdout);
             status = st;
             free_job(x);
         }

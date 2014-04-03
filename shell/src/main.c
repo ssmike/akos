@@ -22,7 +22,6 @@ static int type(char x) {
 
 static void exec_s() {
     struct job * jb = parse(s);
-    fprintf(stderr, "I am %d\n", getpid());
     free(s);
     if (jb != NULL) {
         execute(jb);
