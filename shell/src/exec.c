@@ -21,6 +21,7 @@ extern pid_t getpgid(pid_t);
 extern int gethostname(char *name, size_t len);
 extern ssize_t readlink(const char *path, char *buf, size_t bufsiz);
 extern char *ctermid(char *);
+extern int kill(pid_t pid, int sig);
 
 struct variable{
     char * name;
@@ -50,10 +51,39 @@ static int tty_fd;
 
 int status;
 
+static void delete_pid(pid_t p) {
+    int i, j;
+    for (i = 0; background[i] != p && i < background_jobs_n; i++);
+    if (i == background_jobs_n) return;
+    for (j = i; j < background_jobs_n; j++)
+        background[j] = background[j + 1];
+    background_jobs_n--;
+}
+
 static bool builtin_hook(struct job * x) {
+    int st;
+    int dd;
     if (x->commandsc == 1) {
         if (strcmp(x->commands[0]->name, "exit") == 0) {
             exit_shell();
+        }
+        if (strcmp(x->commands[0]->name, "fg") == 0) {
+            if (x->commands[0]->argc < 2) {
+                dd = background_jobs_n - 1;
+            } else {
+                sscanf(x->commands[0]->args[1], "%d", &dd);
+            }
+            tcsetpgrp(tty_fd, getpgid(background[dd]));
+            kill(-background[dd], SIGCONT);
+            waitpid(background[dd], &st, WUNTRACED);
+            if (WIFSTOPPED(status)) {
+                return true;
+            } else {
+                printf("command exited with status %d\n", st);
+                delete_pid(background[dd]);
+                status = st;
+                return true;
+            }
         }
     }
     return false;
@@ -85,7 +115,7 @@ static void exec_com(struct command * cs) {
     if (builtin_find(cs->name)) builtin_exec(cs);
     execvp(cs->name, cs->args);
     printf("command not found\n");
-    _exit(10);
+    exit(10);
 }
 
 static void controller_signal_handler(int sn) {
@@ -113,7 +143,7 @@ static pid_t execute_job(struct job * jb) {
     usr1_lock = false;
     signal(SIGUSR1, catcher);
     if ((ctl = fork()) == 0) {
-        fprintf(stderr, "controller pid - %d\n", getpid());
+        fprintf(stderr, "controller pid - %d\ncommand output------------------\n", getpid());
         if (!usr1_lock) pause();
         res = true;
         for (i = 0; i < jb->commandsc; i++) {
@@ -178,15 +208,6 @@ static void add_background_job(struct job * x, pid_t ctl) {
     background_jobs_n++;
 }
 
-static void delete_pid(pid_t p) {
-    int i, j;
-    for (i = 0; background[i] != p && i < background_jobs_n; i++);
-    if (i == background_jobs_n) return;
-    for (j = i; j < background_jobs_n; j++)
-        background[j] = background[j + 1];
-    background_jobs_n--;
-}
-
 static void zombie_clr() {
     int st, i, res;
     for (i = 0; i < background_jobs_n; i++) {
@@ -212,11 +233,13 @@ void execute(struct job* x) {
         add_background_job(x, execute_job(x));
     } else {
         pid_t ctl = execute_job(x);
-        int status;
-        waitpid(ctl, &status, WUNTRACED);
-        if (WIFSTOPPED(status)) {
+        int st;
+        waitpid(ctl, &st, WUNTRACED);
+        if (WIFSTOPPED(st)) {
             add_background_job(x, ctl);
         } else {
+            printf("command exited with status %d\n", st);
+            status = st;
             free_job(x);
         }
     }
