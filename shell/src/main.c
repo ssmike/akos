@@ -52,6 +52,7 @@ int main(int argc, char ** argv) {
     if (s == NULL) exit(3);
     s[0] = '\0';
     while(!feof(stdin)) {
+        if (errno == EINTR) errno = 0;
         c = getchar();
         /*if (c == EOF) continue;*/
         if (comment) {
