@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <errno.h>
+#include <unistd.h>
 
 
 char * s = NULL;
@@ -35,19 +36,31 @@ static void exec_s() {
     }
 }
 
+/* 
+ * при запуске 1-й команды в фоне при чтении следующей первый символ равен EOF
+ * в какую сторону копать - непонятно
+ * подобное непонятное поведение привело к этому костылю
+ */
+char superGetchar() {
+    char s;
+    if ((s = getchar()) != EOF) return s;
+    return getchar();
+}
+
 int main(int argc, char ** argv) {
     char c;
     int quot = 0;
     bool slash = false;
     bool comment = false;
+    is_interactive = isatty(0);
     init_shell(argc, argv);
     s_ss = s_rs = sizeof(char);
     s = (char*)malloc(sizeof(char));
     if (s == NULL) exit(3);
     s[0] = '\0';
-    while((c = getchar()) != EOF) {
+    while((c = superGetchar()) != EOF) {
         /*char c = getchar();*/
-        if (c == EOF) continue;
+        /*if (c == EOF) continue;*/
         if (comment) {
             if (c == '\n') {
                 comment = false;

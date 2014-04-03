@@ -236,7 +236,6 @@ static void clr_signals() {
 void init_shell(int argc, char ** argv) {
     int i;
     char * buffer;
-    is_interactive = isatty(0);
     background_jobs_n = 0;
     fprintf(stderr, "%d - PID\n", getpid());
 
