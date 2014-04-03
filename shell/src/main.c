@@ -36,6 +36,7 @@ static void exec_s() {
 }
 
 int main(int argc, char ** argv) {
+    char c;
     int quot = 0;
     bool slash = false;
     bool comment = false;
@@ -44,8 +45,9 @@ int main(int argc, char ** argv) {
     s = (char*)malloc(sizeof(char));
     if (s == NULL) exit(3);
     s[0] = '\0';
-    while(!feof(stdin)) {
-        char c = getchar();
+    while((c = getchar()) != EOF) {
+        /*char c = getchar();*/
+        if (c == EOF) continue;
         if (comment) {
             if (c == '\n') {
                 comment = false;

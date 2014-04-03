@@ -112,7 +112,7 @@ char ** parseCTokens(char * x, int * sz) {
 static void * trymalloc(size_t size) {
     void * res = malloc(size);
     if (res == NULL) errno = ENOMEM;
-    if (errno != 0) return NULL;
+    if (errno == ENOMEM) return NULL;
     return res;
 }
 
@@ -207,6 +207,10 @@ struct job * parse(char * x) {
     size_t cds_rs = 0, cds_ss = 0;
     struct job * res = trymalloc(sizeof(struct job));
     char ** tokens;
+    if (res == NULL) {
+        errno = ENOMEM;
+        return NULL;
+    }
     if (x == NULL) {
         PARSE_ERROR_MESSAGE = "empty string";
         return NULL;

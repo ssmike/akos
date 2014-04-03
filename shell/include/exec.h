@@ -2,10 +2,12 @@
 #define EXEC_H
 
 #include <sys/types.h>
+#include <stdbool.h>
 
 struct job;
 
 
+extern bool is_interactive;
 extern struct job ** background_jobs;
 extern int background_jobs_n;
 extern pid_t * background;

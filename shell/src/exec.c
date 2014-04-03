@@ -32,10 +32,11 @@ static void signal_handler(int sn) {
         fputs("SIGTSTP", stderr);
     }
     if (sn == SIGINT) {
-        _exit(2);
+        /*_exit(2);*/
     }
 }
 
+bool is_interactive;
 int background_jobs_n;
 struct job ** background_jobs;
 pid_t * background;
@@ -83,7 +84,8 @@ static void exec_com(struct command * cs) {
     clr_signals();
     if (builtin_find(cs->name)) builtin_exec(cs);
     execvp(cs->name, cs->args);
-    exit(10);
+    printf("command not found\n");
+    _exit(10);
 }
 
 static void controller_signal_handler(int sn) {
@@ -143,7 +145,8 @@ static pid_t execute_job(struct job * jb) {
                 }
                 exec_com(jb->commands[i]);           
             }
-            close(pp[1]);
+            if (i != jb->commandsc - 1)
+                close(pp[1]);
             close(pinp);
             pinp = pp[0];
         }
@@ -154,11 +157,12 @@ static pid_t execute_job(struct job * jb) {
             if (wait(&st) == jb->commands[jb->commandsc - 1]->pid)
                 res = st;
         }
-        tcsetpgrp(tty_fd, getpgid(getppid()));
+        if (is_interactive)
+            tcsetpgrp(tty_fd, getpgid(getppid()));
         exit(res);
     }
     setpgid(ctl, ctl);
-    if (!jb->background)
+    if (is_interactive && !jb->background)
         tcsetpgrp(tty_fd, ctl);
     kill(ctl, SIGUSR1);
     return ctl;
@@ -184,13 +188,16 @@ static void delete_pid(pid_t p) {
 }
 
 static void zombie_clr() {
-    pid_t died;
-    int st;
-    while ((died = waitpid(-1, &st, WNOHANG)) != -1) {
-        printf("PID exited: %d", died);
-        status = st;
-        delete_pid(died);
+    int st, i, res;
+    for (i = 0; i < background_jobs_n; i++) {
+        res = waitpid(background[i], &st, WNOHANG);
+        if (res != 0 && res != -1) {
+            printf("PID exited: %d\n", background[i]);
+            status = st;
+            delete_pid(background[i--]);
+        }
     }
+    errno = 0;
 }
 
 void execute(struct job* x) {
@@ -198,6 +205,7 @@ void execute(struct job* x) {
         free_job(x);
         return;
     }
+    printf("my group - %d, term control - %d\n", getpgrp(), tcgetpgrp(tty_fd));
     print_job_desc(x);
     fflush(stdout);
     if (x->background) {
@@ -228,10 +236,14 @@ static void clr_signals() {
 void init_shell(int argc, char ** argv) {
     int i;
     char * buffer;
+    is_interactive = isatty(0);
     background_jobs_n = 0;
     fprintf(stderr, "%d - PID\n", getpid());
-    tty_fd = open(ctermid(NULL), O_RDONLY, 0);
-    tcsetpgrp(tty_fd, getpgrp());
+
+    if (is_interactive) {
+        tty_fd = open(ctermid(NULL), O_RDONLY, 0);
+        tcsetpgrp(tty_fd, getpgrp());
+    }
     bsz = brsz = bjsz = bjrsz = 0;
     signal(SIGTSTP, signal_handler);
     signal(SIGINT, signal_handler);
@@ -301,7 +313,7 @@ char * findvar(char * name) {
     if (strcmp(name, "?") == 0) {
         buffer = (char*)malloc(10 * sizeof(char));
         if (buffer == NULL) exit(3);
-        printf(buffer, "%d", status);
+        sprintf(buffer, "%d", status);
         return buffer;
     }
     for (i = 0; i < rvars_n; i++) {
