@@ -246,7 +246,7 @@ void init_shell(int argc, char ** argv) {
     bsz = brsz = bjsz = bjrsz = 0;
     signal(SIGTSTP, signal_handler);
     signal(SIGINT, signal_handler);
-    signal(SIGCHLD, signal_handler);
+    /*signal(SIGCHLD, signal_handler);*/
     background = NULL;
     foreground = NULL;
     background_jobs = NULL;

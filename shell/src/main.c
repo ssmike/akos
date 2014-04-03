@@ -7,6 +7,9 @@
 #include <errno.h>
 #include <unistd.h>
 
+int geterrno() {
+    return errno;
+}
 
 char * s = NULL;
 size_t s_ss, s_rs;
@@ -19,6 +22,7 @@ static int type(char x) {
 
 static void exec_s() {
     struct job * jb = parse(s);
+    fprintf(stderr, "I am %d\n", getpid());
     free(s);
     if (jb != NULL) {
         execute(jb);
@@ -36,17 +40,6 @@ static void exec_s() {
     }
 }
 
-/* 
- * при запуске 1-й команды в фоне при чтении следующей первый символ равен EOF
- * в какую сторону копать - непонятно
- * подобное непонятное поведение привело к этому костылю
- */
-char superGetchar() {
-    char s;
-    if ((s = getchar()) != EOF) return s;
-    return getchar();
-}
-
 int main(int argc, char ** argv) {
     char c;
     int quot = 0;
@@ -58,8 +51,8 @@ int main(int argc, char ** argv) {
     s = (char*)malloc(sizeof(char));
     if (s == NULL) exit(3);
     s[0] = '\0';
-    while((c = superGetchar()) != EOF) {
-        /*char c = getchar();*/
+    while(!feof(stdin)) {
+        c = getchar();
         /*if (c == EOF) continue;*/
         if (comment) {
             if (c == '\n') {
