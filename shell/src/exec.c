@@ -52,6 +52,15 @@ static int tty_fd;
 
 int status;
 
+static int findpid(pid_t p) {
+    int i;
+    for (i = 0; i < background_jobs_n; i++) {
+        if (background[i] == p)
+            return i;
+    }
+    return -1;
+}
+
 static void delete_pid(pid_t p) {
     int i, j;
     for (i = 0; background[i] != p && i < background_jobs_n; i++);
@@ -87,48 +96,48 @@ static bool builtin_hook(struct job * x) {
         }
         if (strcmp(x->commands[0]->name, "bg") == 0) {
             if (x->commands[0]->argc < 2) {
-                dd = background_jobs_n - 1;
+                dd = -background[background_jobs_n - 1];
             } else {
-                if (1 != sscanf(x->commands[0]->args[1], "%%%d", &dd))
+                if (1 != sscanf(x->commands[0]->args[1], "%d", &dd))
                     return false;
             }
-            if (dd < 0 || dd >= background_jobs_n) {
+            if (dd == 1 || findpid(-dd) == -1) {
                 printf("no such job\n");
                 fflush(stdout);
                 return true;
             }
-            kill(-background[dd], SIGCONT);
-            waitpid(background[dd], &st, WUNTRACED | WNOHANG);
+            kill(dd, SIGCONT);
+            waitpid(-dd, &st, WUNTRACED | WNOHANG);
             if (WIFSTOPPED(status)) {
                 return true;
             } else {
                 printf("command exited with status %d\n", WEXITSTATUS(st));
-                delete_pid(background[dd]);
+                delete_pid(-dd);
                 status = st;
                 return true;
             }
         }
         if (strcmp(x->commands[0]->name, "fg") == 0) {
             if (x->commands[0]->argc < 2) {
-                dd = background_jobs_n - 1;
+                dd = -background[background_jobs_n - 1];
             } else {
-                if (1 != sscanf(x->commands[0]->args[1], "%%%d", &dd))
+                if (1 != sscanf(x->commands[0]->args[1], "%d", &dd))
                     return false;
             }
-            if (dd < 0 || dd >= background_jobs_n) {
+            if (dd == 1 || findpid(-dd) == -1) {
                 printf("no such job\n");
                 fflush(stdout);
                 return true;
             }
-            tcsetpgrp(tty_fd, getpgid(background[dd]));
-            kill(-background[dd], SIGCONT);
-            waitpid(background[dd], &st, WUNTRACED);
+            tcsetpgrp(tty_fd, getpgid(-dd));
+            kill(dd, SIGCONT);
+            waitpid(-dd, &st, WUNTRACED);
             tcsetpgrp(tty_fd, getpgid(getpid()));
             if (WIFSTOPPED(status)) {
                 return true;
             } else {
                 printf("command exited with status %d\n", WEXITSTATUS(st));
-                delete_pid(background[dd]);
+                delete_pid(-dd);
                 status = st;
                 return true;
             }
@@ -258,14 +267,7 @@ static void add_background_job(struct job * x, pid_t ctl) {
     background_jobs_n++;
 }
 /*
-static int findpid(pid_t p) {
-    int i;
-    for (i = 0; i < background_jobs_n; i++) {
-        if (background[i] == p)
-            return i;
-    }
-    return -1;
-}
+
 */
 void zombie_clr() {
     int st, i, res;

@@ -304,13 +304,14 @@ static bool isChar(char x) {
 }
 
 int replace_vars(char ** x) {
-    int n = strlen(*x), i, j, k, tlen;
+    int n = strlen(*x), i, j, k, tlen, buf;
     char * ans = (char*)malloc(sizeof(char));
     size_t anssz = sizeof(char);
     size_t ansrsz = sizeof(char);
     int quott = 0;
     bool slash = false;
     char * tmp, * tmp2;
+    char carr[10];
     if (ans == NULL) {
         errno = ENOMEM;
         return -1;
@@ -337,6 +338,7 @@ int replace_vars(char ** x) {
                 }
                 tmp2 = findvar(tmp);
                 tlen = strlen(tmp2);
+                free(tmp);
                 for (k = 0; k < tlen; k++)
                     push_back(&ans, &anssz, &ansrsz, tmp2[k]);
                 i = j;
@@ -350,10 +352,31 @@ int replace_vars(char ** x) {
                 }
                 tmp2 = findvar(tmp);
                 tlen = strlen(tmp2);
+                free(tmp);
                 for (k = 0; k < tlen; k++)
                     push_back(&ans, &anssz, &ansrsz, tmp2[k]);
                 i = j - 1;
             }
+            continue;
+        }
+        if ((*x)[i] == '%' && quott == 0) {
+            for (j = i + 1; j < n && (*x)[j] >= '0' && (*x)[j] <= '9'; j++);
+            if ((tmp = strndup((*x) + i + 1, j - i - 1)) == NULL) {
+                errno = ENOMEM;
+                free(ans);
+                return -1;
+            }
+            buf = -1;
+            sscanf(tmp, "%d", &buf);
+            if (buf < 0 || buf > background_jobs_n) { 
+                carr[0] = '1';
+                carr[1] = '\0';
+            }
+            else sprintf(carr, "%d", -background[buf]);
+            tlen = strlen(carr);
+            for (k = 0; k < tlen; k++)
+                push_back(&ans, &anssz, &ansrsz, carr[k]);
+            i = j - 1;
             continue;
         }
         if (quott) {
