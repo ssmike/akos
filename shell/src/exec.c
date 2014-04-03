@@ -82,6 +82,7 @@ static bool builtin_hook(struct job * x) {
             tcsetpgrp(tty_fd, getpgid(background[dd]));
             kill(-background[dd], SIGCONT);
             waitpid(background[dd], &st, WUNTRACED);
+            tcsetpgrp(tty_fd, getpgid(getpid()));
             if (WIFSTOPPED(status)) {
                 return true;
             } else {
