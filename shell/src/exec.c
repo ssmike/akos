@@ -71,8 +71,9 @@ static void delete_pid(pid_t p) {
     for (j = i; j < background_jobs_n; j++)
         background[j] = background[j + 1];
     background_jobs_n--;
-    bsz -= sizeof(pid_t);
+    /*bsz -= sizeof(pid_t);
     bjsz -= sizeof(struct job *);
+    */
     if (bsz < brsz / 2) {
         /*
         a = brsz / 2;
