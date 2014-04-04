@@ -7,7 +7,7 @@ int jobs(struct command * t);
 int pwd(struct command * t);
 
 char * builtin_names[builtins_n] = {"jobs", "pwd"};
-builtin functions[builtins_n] = {&jobs};
+builtin functions[builtins_n] = {&jobs, &pwd};
 
 
 int jobs(struct command * t) {
@@ -21,6 +21,6 @@ int jobs(struct command * t) {
 }
 
 int pwd(struct command * t) {
-    printf("%s", getenv("PWD"));
+    printf("%s\n", getenv("PWD"));
     return 0;
 }

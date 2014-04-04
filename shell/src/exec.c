@@ -1,3 +1,4 @@
+#define _POSIX_SOURCE
 #include "builtins.h"
 #include "exec.h"
 #include "shell_structs.h"
@@ -10,6 +11,7 @@
 #include <signal.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <limits.h>
 
 /*for print job desc (debug) */
 #include "argparse.h"
@@ -27,16 +29,16 @@ struct variable{
     char * name;
     char * value;
 };
-
+/*
 static void signal_handler(int sn) {
     if (sn == SIGTSTP) {
         fputs("SIGTSTP", stderr);
     }
     if (sn == SIGINT) {
-        /*_exit(2);*/
+        _exit(2);
     }
 }
-
+*/
 bool debug;
 bool is_interactive;
 int background_jobs_n;
@@ -70,6 +72,8 @@ static void delete_pid(pid_t p) {
     background_jobs_n--;
 }
 
+static char cwdbuf[PATH_MAX + 1];
+
 static bool builtin_hook(struct job * x) {
     int st, i, l;
     int dd;
@@ -81,6 +85,8 @@ static bool builtin_hook(struct job * x) {
         if (strcmp(x->commands[0]->name, "cd") == 0) {
             if (x->commands[0]->argc < 2) return true;
             chdir(x->commands[0]->args[1]);
+            getcwd(cwdbuf, sizeof(cwdbuf));
+            setenv("PWD", cwdbuf, 1);
             return true;
         }
         if (strcmp(x->commands[0]->name, "export") == 0) {
@@ -159,11 +165,11 @@ static bool builtin_find(char * s) {
 static void builtin_exec(struct command * cs) {
     int i;
     for (i = 0; i < builtins_n; i++) {
-        if (strcmp(cs->args[i], builtin_names[i]) == 0) {
+        if (strcmp(cs->name, builtin_names[i]) == 0) {
             exit((*functions[i])(cs));
         }
     }
-    _exit(10); 
+    exit(10); 
 }
 
 static void clr_signals();
@@ -172,8 +178,7 @@ static void exec_com(struct command * cs) {
     if (builtin_find(cs->name)) builtin_exec(cs);
     execvp(cs->name, cs->args);
     printf("command not found\n");
-    fflush(stdout);
-    _exit(10);
+    exit(10);
 }
 /*
 static void controller_signal_handler(int sn) {
@@ -200,15 +205,10 @@ static pid_t execute_job(struct job * jb) {
     int i, pinp = 0, fd, st, res;
     pid_t ctl;
     int pp[2];
-    /*usr1_lock = false;
-    signal(SIGUSR1, catcher);*/
     if ((ctl = fork()) == 0) {
         if (debug) fprintf(stderr, "controller pid - %d\ncommand output------------------\n", getpid());
         signal(SIGTSTP, SIG_DFL);
-        /*if (!usr1_lock) pause(); */
         res = 0;
-        /*if (!jb->background)
-            tcsetpgrp(tty_fd, getpgid(getpid()));*/
         for (i = 0; i < jb->commandsc; i++) {
             if (i != jb->commandsc - 1) {
                 pipe(pp);
@@ -341,9 +341,11 @@ void init_shell(int argc, char ** argv) {
     }
     bsz = brsz = bjsz = bjrsz = 0;
     signal(SIGTTOU, SIG_IGN);
-    signal(SIGTSTP, signal_handler);
+    signal(SIGTSTP, SIG_IGN);
+    signal(SIGINT, SIG_IGN);
+    /*signal(SIGTSTP, signal_handler);
     signal(SIGINT, signal_handler);
-    /*signal(SIGCHLD, signal_handler);*/
+    signal(SIGCHLD, signal_handler);*/
     background = NULL;
     foreground = NULL;
     background_jobs = NULL;
