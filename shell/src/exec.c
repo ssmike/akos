@@ -127,12 +127,12 @@ static bool builtin_hook(struct job * x) {
             }
             kill(dd, SIGCONT);
             waitpid(-dd, &st, WUNTRACED | WNOHANG);
-            if (WIFSTOPPED(status)) {
+            if (WIFSTOPPED(st)) {
                 return true;
             } else {
                 printf("command exited with status %d\n", WEXITSTATUS(st));
                 delete_pid(-dd);
-                status = st;
+                status = WEXITSTATUS(st);
                 return true;
             }
         }
@@ -152,12 +152,12 @@ static bool builtin_hook(struct job * x) {
             kill(dd, SIGCONT);
             waitpid(-dd, &st, WUNTRACED);
             tcsetpgrp(tty_fd, getpgid(getpid()));
-            if (WIFSTOPPED(status)) {
+            if (WIFSTOPPED(st)) {
                 return true;
             } else {
                 printf("command exited with status %d\n", WEXITSTATUS(st));
                 delete_pid(-dd);
-                status = st;
+                status = WEXITSTATUS(st);
                 return true;
             }
         }
@@ -289,7 +289,7 @@ void zombie_clr() {
         res = waitpid(background[i], &st, WNOHANG);
         if (res != 0 && res != -1) {
             printf("job %d exited with %d\n", i, WEXITSTATUS(st));
-            status = st;
+            status = WEXITSTATUS(st);
             delete_pid(background[i--]);
         }
     }
@@ -321,7 +321,7 @@ void execute(struct job* x) {
             if (WEXITSTATUS(st) != 0)
                 printf("command exited with status %d\n", WEXITSTATUS(st));
             fflush(stdout);
-            status = st;
+            status = WEXITSTATUS(st);
             free_job(x);
         }
     }
