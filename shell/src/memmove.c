@@ -6,6 +6,10 @@
 
 #include <stdio.h>
 
+#define PAGE_EXP_LIMIT 4000
+
+size_t pagesz;
+
 void push_back(char ** s, size_t * s_ss, size_t * s_rs, char x) {
     increase((void**)s, s_ss, s_rs, sizeof(char));
     if (errno == ENOMEM) {
@@ -45,18 +49,31 @@ void free_job(struct job * jb) {
 
 
 void increase(void ** arr, size_t * cur_sz, size_t * real_sz, size_t delta) {
+    size_t newsz = 0;
     void * tmp;
-    assert(*cur_sz == *real_sz);
-    *real_sz += delta;
-    *cur_sz += delta;
-    tmp = realloc(*arr, *cur_sz);
+    if (*cur_sz + delta <= *real_sz) {
+        *cur_sz += delta;
+        return;
+    }
+    newsz = *cur_sz + delta;
+    tmp = realloc((void*)(*arr), newsz);
     if (tmp == NULL) {
         errno = ENOMEM;
         return;
     }
+    *cur_sz = newsz;
+    *arr = tmp;
+    *real_sz = newsz;
     *arr = tmp;
 }
 
 void truncate_mem(void ** arr, size_t * cur_sz, size_t * real_sz) {
-    assert(*cur_sz == *real_sz);
+    /*assert(*cur_sz == *real_sz);*/
+    void * tmp = realloc(*arr, *cur_sz);
+    if (tmp == NULL) {
+        errno = ENOMEM;
+        return;
+    }
+    *real_sz = *cur_sz;
+    *arr = tmp;
 }

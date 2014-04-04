@@ -65,22 +65,19 @@ static int findpid(pid_t p) {
 
 static void delete_pid(pid_t p) {
     int i, j;
-    /*size_t a, b;*/
+    size_t a, b;
     for (i = 0; background[i] != p && i < background_jobs_n; i++);
     if (i == background_jobs_n) return;
     for (j = i; j < background_jobs_n; j++)
         background[j] = background[j + 1];
     background_jobs_n--;
-    /*bsz -= sizeof(pid_t);
+    bsz -= sizeof(pid_t);
     bjsz -= sizeof(struct job *);
-    */
     if (bsz < brsz / 2) {
-        /*
         a = brsz / 2;
         b = bjrsz / 2;
         truncate_mem((void**)&background_jobs, &a, &bjrsz);
         truncate_mem((void**)&background, &b, &bjrsz);
-        */
         if (errno == ENOMEM) {
             printf("failed to allocate memory\n");
             exit_shell();
@@ -89,6 +86,7 @@ static void delete_pid(pid_t p) {
 }
 
 static char cwdbuf[PATH_MAX + 1];
+
 
 static bool builtin_hook(struct job * x) {
     int st, i, l;
@@ -141,7 +139,9 @@ static bool builtin_hook(struct job * x) {
         }
         if (strcmp(x->commands[0]->name, "fg") == 0) {
             if (x->commands[0]->argc < 2) {
-                dd = -background[background_jobs_n - 1];
+                if (background_jobs_n >= 1)
+                    dd = -background[background_jobs_n - 1];
+                else dd = 1;
             } else {
                 if (1 != sscanf(x->commands[0]->args[1], "%d", &dd))
                     return false;
@@ -210,12 +210,6 @@ static void controller_signal_handler(int sn) {
 */
 
 int kill(pid_t pid, int sig);
-static bool usr1_lock;
-
-static void catcher(int sn) {
-    usr1_lock = true;
-    return;
-}
 
 static pid_t execute_job(struct job * jb) {
     int i, pinp = 0, fd, st, res;
@@ -328,8 +322,8 @@ void execute(struct job* x) {
             free_job(x);
         }
     }
-    if (!x->background)
-        tcsetpgrp(tty_fd, getpgrp());
+    /*if (!x->background)
+        tcsetpgrp(tty_fd, getpgrp());*/
 }
 
 static void clr_signals() {
