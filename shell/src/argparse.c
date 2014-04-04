@@ -143,6 +143,7 @@ struct command * parse_command(char ** x, int n) {
            if (strcmp(x[i], "<") == 0) {
                 if (cd->input != NULL) fail("too many redirects");
                 cd->input = strdup(x[i + 1]);
+                replace_vars(&cd->input);
                 if (cd->input == NULL) {
                     free_command(cd);
                     return NULL;
@@ -150,6 +151,7 @@ struct command * parse_command(char ** x, int n) {
            } else if (strcmp(x[i], ">") == 0) {
                 if (cd->output != NULL) fail("too many redirects");
                 cd->output = strdup(x[i + 1]);
+                replace_vars(&cd->output);
                 if (cd->output == NULL) {
                     free_command(cd);
                     return NULL;
@@ -158,6 +160,7 @@ struct command * parse_command(char ** x, int n) {
                 if (cd->output != NULL) fail("too many redirects");
                 cd->output = strdup(x[i + 1]);
                 cd->out_append = true;
+                replace_vars(&cd->output);
                 if (cd->output == NULL) {
                     errno = ENOMEM;
                     free_command(cd);

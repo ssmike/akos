@@ -65,7 +65,7 @@ static int findpid(pid_t p) {
 
 static void delete_pid(pid_t p) {
     int i, j;
-    size_t a, b;
+    /*size_t a, b;*/
     for (i = 0; background[i] != p && i < background_jobs_n; i++);
     if (i == background_jobs_n) return;
     for (j = i; j < background_jobs_n; j++)
@@ -74,10 +74,12 @@ static void delete_pid(pid_t p) {
     bsz -= sizeof(pid_t);
     bjsz -= sizeof(struct job *);
     if (bsz < brsz / 2) {
+        /*
         a = brsz / 2;
         b = bjrsz / 2;
         truncate_mem((void**)&background_jobs, &a, &bjrsz);
         truncate_mem((void**)&background, &b, &bjrsz);
+        */
         if (errno == ENOMEM) {
             printf("failed to allocate memory\n");
             exit_shell();
