@@ -217,7 +217,7 @@ static pid_t execute_job(struct job * jb) {
     int pp[2];
     if ((ctl = fork()) == 0) {
         if (debug) fprintf(stderr, "controller pid - %d\ncommand output------------------\n", getpid());
-        signal(SIGTSTP, SIG_DFL);
+        clr_signals();
         res = 0;
         for (i = 0; i < jb->commandsc; i++) {
             if (i != jb->commandsc - 1) {
@@ -362,6 +362,7 @@ void init_shell(int argc, char ** argv) {
     rvars_n = rvars_sz = rvars_rsz = 0;
     rvars = NULL;
     status = 0;
+    pagesz = sysconf(_SC_PAGESIZE);
 
     buffer = (char*)malloc(10 * sizeof(char));
     if (buffer == NULL) exit(3);

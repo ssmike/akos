@@ -55,6 +55,14 @@ void increase(void ** arr, size_t * cur_sz, size_t * real_sz, size_t delta) {
         *cur_sz += delta;
         return;
     }
+    if (*real_sz >= pagesz * PAGE_EXP_LIMIT) {
+        if (*real_sz % pagesz == 0)
+            newsz = *real_sz + pagesz;
+        else
+            newsz = *real_sz + (pagesz - (*real_sz % pagesz));
+    } else {
+        newsz = *real_sz * 2;
+    }
     newsz = *cur_sz + delta;
     tmp = realloc((void*)(*arr), newsz);
     if (tmp == NULL) {
