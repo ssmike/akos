@@ -26,7 +26,7 @@ builtin functions[builtins_n] = {&jobs, &pwd};
 int jobs(struct command * t) {
     int i;
     for (i = 0; i < background_jobs_n; i++) {
-        printf("background job controller : PID - %d\n", background[i]);
+        printf("background job group id - %d\n", background_jobs[i]->ctl_grp);
         printf("id : %d\n", i);
         print_job_desc(background_jobs[i]);
     }
@@ -68,7 +68,7 @@ bool builtin_hook(struct job * x) {
         }
         if (strcmp(x->commands[0]->name, "bg") == 0) {
             if (x->commands[0]->argc < 2) {
-                dd = -background[background_jobs_n - 1];
+                dd = -background_jobs[background_jobs_n - 1]->ctl_grp;
             } else {
                 if (1 != sscanf(x->commands[0]->args[1], "%d", &dd))
                     return false;
@@ -92,7 +92,7 @@ bool builtin_hook(struct job * x) {
         if (strcmp(x->commands[0]->name, "fg") == 0) {
             if (x->commands[0]->argc < 2) {
                 if (background_jobs_n >= 1)
-                    dd = -background[background_jobs_n - 1];
+                    dd = -background_jobs[background_jobs_n - 1]->ctl_grp;
                 else dd = 1;
             } else {
                 if (1 != sscanf(x->commands[0]->args[1], "%d", &dd))

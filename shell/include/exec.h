@@ -11,7 +11,6 @@ extern void zombie_clr();
 extern bool is_interactive;
 extern struct job ** background_jobs;
 extern int background_jobs_n;
-extern pid_t * background;
 extern struct job * foreground;
 extern pid_t for_c_pid;
 extern void execute(struct job*);

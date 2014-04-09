@@ -33,7 +33,6 @@ bool debug;
 bool is_interactive;
 int background_jobs_n;
 struct job ** background_jobs;
-pid_t * background;
 struct job * foreground;
 size_t bsz, brsz, bjsz, bjrsz;
 pid_t for_c_pid;
@@ -47,7 +46,7 @@ int status;
 int findpid(pid_t p) {
     int i;
     for (i = 0; i < background_jobs_n; i++) {
-        if (background[i] == p)
+        if (background_jobs[i]->ctl_grp == p)
             return i;
     }
     return -1;
@@ -80,10 +79,10 @@ int waitForJob(struct job * x) {
 void delete_pid(pid_t p) {
     int i, j;
     size_t a, b;
-    for (i = 0; background[i] != p && i < background_jobs_n; i++);
+    for (i = 0; background_jobs[i]->ctl_grp != p && i < background_jobs_n; i++);
     if (i == background_jobs_n) return;
     for (j = i; j < background_jobs_n; j++)
-        background[j] = background[j + 1];
+        background_jobs[j] = background_jobs[j + 1];
     background_jobs_n--;
     bsz -= sizeof(pid_t);
     bjsz -= sizeof(struct job *);
@@ -91,7 +90,6 @@ void delete_pid(pid_t p) {
         a = brsz / 2;
         b = bjrsz / 2;
         truncate_mem((void**)&background_jobs, &a, &bjrsz);
-        truncate_mem((void**)&background, &b, &bjrsz);
         if (errno == ENOMEM) {
             printf("failed to allocate memory\n");
             exit_shell();
@@ -168,10 +166,8 @@ static pid_t execute_job(struct job * jb) {
 
 static void add_background_job(struct job * x, pid_t ctl) {
     increase((void**)&background_jobs, &bjsz, &bjrsz, sizeof(struct job *));
-    increase((void**)&background, &bsz, &brsz, sizeof(struct job *));
     if (errno == ENOMEM)
         exit_shell();
-    background[background_jobs_n] = ctl;
     background_jobs[background_jobs_n] = x;
     background_jobs_n++;
 }
@@ -254,10 +250,6 @@ void init_shell(int argc, char ** argv) {
     signal(SIGTTOU, SIG_IGN);
     signal(SIGTSTP, SIG_IGN);
     signal(SIGINT, SIG_IGN);
-    /*signal(SIGTSTP, signal_handler);
-    signal(SIGINT, signal_handler);
-    signal(SIGCHLD, signal_handler);*/
-    background = NULL;
     foreground = NULL;
     background_jobs = NULL;
     rvars_n = rvars_sz = rvars_rsz = 0;

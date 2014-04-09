@@ -375,7 +375,7 @@ int replace_vars(char ** x) {
                 carr[0] = '1';
                 carr[1] = '\0';
             }
-            else sprintf(carr, "%d", -background[buf]);
+            else sprintf(carr, "%d", -background_jobs[buf]->ctl_grp);
             tlen = strlen(carr);
             for (k = 0; k < tlen; k++)
                 push_back(&ans, &anssz, &ansrsz, carr[k]);
