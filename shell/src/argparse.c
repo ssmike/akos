@@ -325,7 +325,7 @@ int replace_vars(char ** x) {
             slash = false;
             continue;
         }
-        if ((*x)[i] == '$' && (quott & 1) == 0) {
+        if ((*x)[i] == '$' && (quott & 1) == 0 && !slash) {
             if (i != n - 1 && (*x)[i + 1] == '{') {
                 j = i + 2;
                 while (j < n && (*x)[j] != '}') j++;
@@ -383,6 +383,8 @@ int replace_vars(char ** x) {
             continue;
         }
         if (quott) {
+            if ((quott & 1) == 0 && (*x)[i] == '\\')
+                slash = true;                
             if (type((*x)[i]) == quott)
                 quott = false;
             else push_back(&ans, &anssz, &ansrsz, (*x)[i]);

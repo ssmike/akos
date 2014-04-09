@@ -79,7 +79,8 @@ int main(int argc, char ** argv) {
     int quot = 0;
     bool slash = false;
     bool comment = false;
-
+    bool prevS = false;
+    
     is_interactive = isatty(0);
     init_shell(argc, argv);
     s_ss = s_rs = sizeof(char);
@@ -90,6 +91,7 @@ int main(int argc, char ** argv) {
         if (errno == EINTR) errno = 0;
         c = prgetc();
         if (comment) {
+            prevS = false;
             if (c == '\n') {
                 comment = false;
                 exec_s();
@@ -97,19 +99,25 @@ int main(int argc, char ** argv) {
             continue;
         }
         if (slash) {
+            prevS = false;
             if (c == '\n') {
                 s[(s_ss/sizeof(char)) - 2] = ' ';
             } else push_back(&s, &s_ss, &s_rs, c);
             slash = false;
             continue;
-        } 
+        }
+        if ((quot == type('\"') || quot == 0) && c == '$') {
+           prevS = true; 
+        }
         if (quot != 0) {
+            prevS = false;
             push_back(&s, &s_ss, &s_rs, c);
             if (quot == type(c))
                 quot = 0;
             continue;
         }
         if (c == '\n' || c == ';') {
+            prevS = false;
             exec_s();
             continue;
         }
@@ -117,10 +125,12 @@ int main(int argc, char ** argv) {
             quot = type(c);
         if (c == '\\')
             slash = true;
-        if (c == '#') {
+        if (c == '#' && !prevS) {
             comment = true;
             continue;
         }
+        if (c != '$')
+            prevS = false;
         push_back(&s, &s_ss, &s_rs, c);
     }
     exit_shell();
