@@ -17,6 +17,7 @@ struct job{
     struct command ** commands; 
     int commandsc;
     bool background;
+    pid_t ctl_grp;
 };
 
 

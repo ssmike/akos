@@ -5,7 +5,7 @@
 #include <stdbool.h>
 
 struct job;
-
+extern int waitForJob(struct job * x);
 extern bool debug;
 extern void zombie_clr();
 extern bool is_interactive;

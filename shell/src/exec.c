@@ -53,6 +53,30 @@ int findpid(pid_t p) {
     return -1;
 }
 
+/*
+ * returns latest status from waitpid if all exited
+ * else return status of latest stopped child
+ */
+int waitForJob(struct job * x) {
+    int i, status, stopped_st;
+    int stopped = 0, exited = 0;
+    while (stopped + exited != x->commandsc) {
+        int tmp;
+        waitpid(-x->ctl_grp, &tmp, WUNTRACED);
+        if (WIFSTOPPED(tmp)) {
+            stopped++;
+            stopped_st = tmp;
+        } else {
+            exited++;
+            status = tmp;
+        }
+    }
+    if (stopped != 0)
+        return stopped_st;
+    else
+        return status;
+}
+
 void delete_pid(pid_t p) {
     int i, j;
     size_t a, b;
@@ -89,17 +113,18 @@ int kill(pid_t pid, int sig);
 
 static pid_t execute_job(struct job * jb) {
     int i, pinp = 0, fd, st, res;
-    pid_t ctl;
+    pid_t ctl_pgrp = -1;
     int pp[2];
-    if ((ctl = fork()) == 0) {
+    {
         if (debug) fprintf(stderr, "controller pid - %d\ncommand output------------------\n", getpid());
-        clr_signals();
         res = 0;
         for (i = 0; i < jb->commandsc; i++) {
             if (i != jb->commandsc - 1) {
                 pipe(pp);
             }
             if ((jb->commands[i]->pid = fork()) == 0) {
+                clr_signals();
+                close(tty_fd);
                 if (pinp != 0){  
                     dup2(pinp, 0); 
                     close(pinp);
@@ -124,24 +149,21 @@ static pid_t execute_job(struct job * jb) {
                 }
                 exec_com(jb->commands[i]);           
             }
+            if (ctl_pgrp == -1)
+                ctl_pgrp = jb->commands[i]->pid;
+            setpgid(jb->commands[i]->pid, ctl_pgrp);
             if (i != jb->commandsc - 1)
                 close(pp[1]);
-            close(pinp);
+            if (pinp != 0)
+                close(pinp);
             pinp = pp[0];
         }
-        foreground = jb;
-        while (errno != ECHILD) {
-            if (wait(&st) == jb->commands[jb->commandsc - 1]->pid)
-                res = WEXITSTATUS(st);
-        }
-        if (debug) fprintf(stderr, "tgetpgrp == %d, pgrp == %d, ppgrp == %d\n", tcgetpgrp(tty_fd), getpgid(getpid()), getpgid(getppid()));
-        _exit(res);
     }
-    setpgid(ctl, ctl);
     if (is_interactive && !jb->background)
-        tcsetpgrp(tty_fd, getpgid(ctl));
-    kill(-ctl, SIGCONT);
-    return ctl;
+        tcsetpgrp(tty_fd, ctl_pgrp);
+    kill(-ctl_pgrp, SIGCONT);
+    jb->ctl_grp = ctl_pgrp;
+    return ctl_pgrp;
 }
 
 static void add_background_job(struct job * x, pid_t ctl) {
@@ -153,17 +175,23 @@ static void add_background_job(struct job * x, pid_t ctl) {
     background_jobs[background_jobs_n] = x;
     background_jobs_n++;
 }
-/*
 
-*/
 void zombie_clr() {
-    int st, i, res;
+    int st, i, res, j;
     for (i = 0; i < background_jobs_n; i++) {
-        res = waitpid(background[i], &st, WNOHANG);
-        if (res != 0 && res != -1) {
-            printf("job %d exited with %d\n", i, WEXITSTATUS(st));
+        bool all_exited = true;
+        for (j = 0; j < background_jobs[i]->commandsc; j++) {
+            if (background_jobs[i]->commands[j]->pid != -1) {
+                res = waitpid(background_jobs[i]->commands[j]->pid, &st, WNOHANG);
+                if (res != 0 && res != -1) {                    
+                    background_jobs[i]->commands[j]->pid = -1;
+                } else all_exited = false;
+            }
+        }
+        if (all_exited) {
             status = WEXITSTATUS(st);
-            delete_pid(background[i--]);
+            printf("job %d exited with status %d\n", i, WEXITSTATUS(st));
+            delete_pid(background_jobs[i]->ctl_grp);
         }
     }
     errno = 0;
@@ -183,8 +211,7 @@ void execute(struct job* x) {
         add_background_job(x, execute_job(x));
     } else {
         pid_t ctl = execute_job(x);
-        int st;
-        waitpid(ctl, &st, WUNTRACED);
+        int st = waitForJob(x);
         tcsetpgrp(tty_fd, getpgid(getpid()));
         if (WIFSTOPPED(st)) {
             add_background_job(x, ctl);

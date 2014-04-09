@@ -79,7 +79,7 @@ bool builtin_hook(struct job * x) {
                 return true;
             }
             kill(dd, SIGCONT);
-            waitpid(-dd, &st, WUNTRACED | WNOHANG);
+            waitForJob(background_jobs[findpid(-dd)]);
             if (WIFSTOPPED(st)) {
                 return true;
             } else {
@@ -105,7 +105,7 @@ bool builtin_hook(struct job * x) {
             }
             tcsetpgrp(tty_fd, getpgid(-dd));
             kill(dd, SIGCONT);
-            waitpid(-dd, &st, WUNTRACED);
+            waitForJob(background_jobs[findpid(-dd)]);
             tcsetpgrp(tty_fd, getpgid(getpid()));
             if (WIFSTOPPED(st)) {
                 return true;
