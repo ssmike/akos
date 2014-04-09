@@ -19,5 +19,9 @@ extern void init_shell(int argc, char ** argv);
 extern void exit_shell();
 extern void setvar(char * name, char * val);
 extern char * findvar(char * name);
+extern int status;
+extern int tty_fd;
+extern int findpid(pid_t p);
+extern void delete_pid(pid_t p);
 
 #endif

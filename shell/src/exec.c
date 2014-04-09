@@ -11,7 +11,6 @@
 #include <signal.h>
 #include <sys/stat.h>
 #include <fcntl.h>
-#include <limits.h>
 
 /*for print job desc (debug) */
 #include "argparse.h"
@@ -29,16 +28,7 @@ struct variable{
     char * name;
     char * value;
 };
-/*
-static void signal_handler(int sn) {
-    if (sn == SIGTSTP) {
-        fputs("SIGTSTP", stderr);
-    }
-    if (sn == SIGINT) {
-        _exit(2);
-    }
-}
-*/
+
 bool debug;
 bool is_interactive;
 int background_jobs_n;
@@ -50,11 +40,11 @@ pid_t for_c_pid;
 
 size_t rvars_sz, rvars_rsz, rvars_n;
 struct variable * rvars;
-static int tty_fd;
+int tty_fd;
 
 int status;
 
-static int findpid(pid_t p) {
+int findpid(pid_t p) {
     int i;
     for (i = 0; i < background_jobs_n; i++) {
         if (background[i] == p)
@@ -63,7 +53,7 @@ static int findpid(pid_t p) {
     return -1;
 }
 
-static void delete_pid(pid_t p) {
+void delete_pid(pid_t p) {
     int i, j;
     size_t a, b;
     for (i = 0; background[i] != p && i < background_jobs_n; i++);
@@ -85,108 +75,6 @@ static void delete_pid(pid_t p) {
     }
 }
 
-static char cwdbuf[PATH_MAX + 1];
-
-
-static bool builtin_hook(struct job * x) {
-    int st, i, l;
-    int dd;
-    char * ss;
-    if (x->commandsc == 1) {
-        if (strcmp(x->commands[0]->name, "exit") == 0) {
-            exit_shell();
-        }
-        if (strcmp(x->commands[0]->name, "cd") == 0) {
-            if (x->commands[0]->argc < 2) return true;
-            chdir(x->commands[0]->args[1]);
-            getcwd(cwdbuf, sizeof(cwdbuf));
-            setenv("PWD", cwdbuf, 1);
-            return true;
-        }
-        if (strcmp(x->commands[0]->name, "export") == 0) {
-            if (x->commands[0]->argc < 2) return true;
-            l = strlen(x->commands[0]->args[1]);
-            for (i = 0; i < l && x->commands[0]->args[1][i] != '='; i++);
-            ss = x->commands[0]->args[1];
-            if (i == l) return true;
-            ss[i] = '\0';
-            setenv(ss, ss + i + 1, 1);
-            ss[i] = '=';
-            return true;
-        }
-        if (strcmp(x->commands[0]->name, "bg") == 0) {
-            if (x->commands[0]->argc < 2) {
-                dd = -background[background_jobs_n - 1];
-            } else {
-                if (1 != sscanf(x->commands[0]->args[1], "%d", &dd))
-                    return false;
-            }
-            if (dd == 1 || findpid(-dd) == -1) {
-                printf("no such job\n");
-                fflush(stdout);
-                return true;
-            }
-            kill(dd, SIGCONT);
-            waitpid(-dd, &st, WUNTRACED | WNOHANG);
-            if (WIFSTOPPED(st)) {
-                return true;
-            } else {
-                printf("command exited with status %d\n", WEXITSTATUS(st));
-                delete_pid(-dd);
-                status = WEXITSTATUS(st);
-                return true;
-            }
-        }
-        if (strcmp(x->commands[0]->name, "fg") == 0) {
-            if (x->commands[0]->argc < 2) {
-                if (background_jobs_n >= 1)
-                    dd = -background[background_jobs_n - 1];
-                else dd = 1;
-            } else {
-                if (1 != sscanf(x->commands[0]->args[1], "%d", &dd))
-                    return false;
-            }
-            if (dd == 1 || findpid(-dd) == -1) {
-                printf("no such job\n");
-                fflush(stdout);
-                return true;
-            }
-            tcsetpgrp(tty_fd, getpgid(-dd));
-            kill(dd, SIGCONT);
-            waitpid(-dd, &st, WUNTRACED);
-            tcsetpgrp(tty_fd, getpgid(getpid()));
-            if (WIFSTOPPED(st)) {
-                return true;
-            } else {
-                printf("command exited with status %d\n", WEXITSTATUS(st));
-                delete_pid(-dd);
-                status = WEXITSTATUS(st);
-                return true;
-            }
-        }
-    }
-    return false;
-}
-
-static bool builtin_find(char * s) {
-    int i;
-    for (i = 0; i < builtins_n; i++) {
-        if (strcmp(s, builtin_names[i]) == 0) {
-            return true;
-        }
-    }
-    return false;
-}
-
-static void builtin_exec(struct command * cs) {
-    int i;
-    for (i = 0; i < builtins_n; i++) {
-        if (strcmp(cs->name, builtin_names[i]) == 0) {
-            exit((*functions[i])(cs));
-        }
-    }
-    exit(10); 
-}
 
 static void clr_signals();
 static void exec_com(struct command * cs) {
@@ -196,18 +84,6 @@ static void exec_com(struct command * cs) {
     printf("command not found\n");
     exit(10);
 }
-/*
-static void controller_signal_handler(int sn) {
-    if (sn == SIGTSTP) {
-        tcsetpgrp(tty_fd, getpgid(getppid()));
-        pause();
-    }
-    if (sn == SIGINT) {
-        tcsetpgrp(tty_fd, getpgid(getppid()));
-        _exit(2);
-    }
-}
-*/
 
 int kill(pid_t pid, int sig);
 
@@ -322,8 +198,6 @@ void execute(struct job* x) {
             free_job(x);
         }
     }
-    /*if (!x->background)
-        tcsetpgrp(tty_fd, getpgrp());*/
 }
 
 static void clr_signals() {
