@@ -233,7 +233,7 @@ static void clr_signals() {
 }
 
 void init_shell(int argc, char ** argv) {
-    int i;
+    int i, n;
     char * buffer;
     background_jobs_n = 0;
 
@@ -285,10 +285,13 @@ void init_shell(int argc, char ** argv) {
     errno = 0;
     setvar("HOSTNAME", buffer);
 
-    buffer = (char*)malloc(200 * sizeof(char));
+    buffer = (char*)malloc(202 * sizeof(char));
+    memset(buffer, 0, sizeof(buffer));
     if (buffer == NULL) exit(3);
-    readlink("/proc/self/exe", buffer, sizeof(char) * 200);
-    errno = 0;
+    n = readlink("/proc/self/exe", buffer, 200);
+    buffer[n] = '\0';
+    if (errno == ENAMETOOLONG)
+        errno = 0;
     setvar("SHELL", buffer);
     
 }
