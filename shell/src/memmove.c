@@ -76,8 +76,18 @@ void increase(void ** arr, size_t * cur_sz, size_t * real_sz, size_t delta) {
 }
 
 void truncate_mem(void ** arr, size_t * cur_sz, size_t * real_sz) {
-    /*assert(*cur_sz == *real_sz);*/
-    void * tmp = realloc(*arr, *cur_sz);
+    void * tmp;
+    if (*cur_sz == 0) {
+        if (*real_sz == 0)
+            return;
+        else {
+            *real_sz = 0;
+            free(*arr);
+            *arr = NULL;
+            return;
+        }
+    }
+    tmp = realloc(*arr, *cur_sz);
     if (tmp == NULL) {
         errno = ENOMEM;
         return;

@@ -81,7 +81,7 @@ void delete_pid(pid_t p) {
     size_t a, b;
     for (i = 0; background_jobs[i]->ctl_grp != p && i < background_jobs_n; i++);
     if (i == background_jobs_n) return;
-    for (j = i; j < background_jobs_n; j++)
+    for (j = i; j < background_jobs_n - 1; j++)
         background_jobs[j] = background_jobs[j + 1];
     background_jobs_n--;
     bsz -= sizeof(pid_t);

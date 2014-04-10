@@ -209,7 +209,7 @@ struct job * parse(char * x) {
     int n, i, j;
     size_t cds_rs = 0, cds_ss = 0;
     struct job * res = trymalloc(sizeof(struct job));
-    char ** tokens;
+    char ** tokens = NULL;
     if (res == NULL) {
         errno = ENOMEM;
         return NULL;
@@ -371,6 +371,7 @@ int replace_vars(char ** x) {
             }
             buf = -1;
             sscanf(tmp, "%d", &buf);
+            free(tmp);
             if (buf < 0 || buf > background_jobs_n) { 
                 carr[0] = '1';
                 carr[1] = '\0';

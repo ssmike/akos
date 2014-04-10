@@ -65,6 +65,7 @@ char prgetc() {
             else printf("| ");
             fflush(stdout);
         }
+        free(getc_buf);
         if ((getc_buf_len = getss(&getc_buf)) < 0) {
             printf("failed to read\n");
             exit(3);
