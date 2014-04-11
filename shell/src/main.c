@@ -109,10 +109,11 @@ int main(int argc, char ** argv) {
            prevS = true; 
         }
         if (quot != 0) {
-            prevS = false;
-            push_back(&s, &s_ss, &s_rs, c);
+            if (c == '\\' && quot == type('\"')) slash = true;
             if (quot == type(c))
                 quot = 0;
+            push_back(&s, &s_ss, &s_rs, c); 
+            prevS = false;
             continue;
         }
         if (c == '\n' || c == ';') {

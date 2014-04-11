@@ -91,7 +91,7 @@ char ** parseCTokens(char * x, int * sz) {
             ppos = i;
         }
 
-        if (!c_slsh && x[i] == '\\') {
+        if (qts != qtype('\'') && !c_slsh && x[i] == '\\') {
             pr_slsh = c_slsh;
             c_slsh = true;
         } else {
@@ -386,11 +386,16 @@ int replace_vars(char ** x) {
             continue;
         }
         if (quott) {
-            if ((quott & 1) == 0 && (*x)[i] == '\\')
+            bool push = true;
+            if ((quott & 1) == 0 && (*x)[i] == '\\') {
+                push = false;
                 slash = true;                
+            }
             if (type((*x)[i]) == quott)
                 quott = false;
-            else push_back(&ans, &anssz, &ansrsz, (*x)[i]);
+            else {
+                if (push) push_back(&ans, &anssz, &ansrsz, (*x)[i]);
+            }
             continue;
         }
 
