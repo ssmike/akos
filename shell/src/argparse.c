@@ -180,7 +180,7 @@ struct command * parse_command(char ** x, int n) {
                 }
             } else {
                 increase((void**)&(cd->args), &cd_ss, &cd_rs, sizeof(char*));
-                if (errno == 0) {
+                if (errno != ENOMEM) {
                     cd->args[cd->argc] = strdup(x[i]);
                     tst = replace_vars(&cd->args[cd->argc]);
                     cd->argc += 1;
