@@ -122,7 +122,7 @@ static pid_t execute_job(struct job * jb) {
             }
             if ((jb->commands[i]->pid = fork()) == 0) {
                 clr_signals();
-                close(tty_fd);
+                if (is_interactive)  close(tty_fd);
                 if (pinp != 0){  
                     dup2(pinp, 0); 
                     close(pinp);
