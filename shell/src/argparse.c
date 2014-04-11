@@ -139,8 +139,9 @@ struct command * parse_command(char ** x, int n) {
     cd->name = NULL;
     for (i = 0; i < n; i++) {
         if (bracket(x[i][0])) {
-           if (i == n - 1) fail("syntax error at last token");
-           if (strcmp(x[i], "<") == 0) {
+            if (i == 0) fail("invalid redirection");
+            if (i == n - 1) fail("syntax error at last token");
+            if (strcmp(x[i], "<") == 0) {
                 if (cd->input != NULL) fail("too many redirects");
                 cd->input = strdup(x[i + 1]);
                 replace_vars(&cd->input);
@@ -148,7 +149,7 @@ struct command * parse_command(char ** x, int n) {
                     free_command(cd);
                     return NULL;
                 }
-           } else if (strcmp(x[i], ">") == 0) {
+            } else if (strcmp(x[i], ">") == 0) {
                 if (cd->output != NULL) fail("too many redirects");
                 cd->output = strdup(x[i + 1]);
                 replace_vars(&cd->output);
@@ -156,7 +157,7 @@ struct command * parse_command(char ** x, int n) {
                     free_command(cd);
                     return NULL;
                 }
-           } else if (strcmp(x[i], ">>") == 0) {
+            } else if (strcmp(x[i], ">>") == 0) {
                 if (cd->output != NULL) fail("too many redirects");
                 cd->output = strdup(x[i + 1]);
                 cd->out_append = true;
@@ -166,8 +167,8 @@ struct command * parse_command(char ** x, int n) {
                     free_command(cd);
                     return NULL;
                 }
-           } else fail("invalid token");
-           i++;
+            } else fail("invalid token");
+            i++;
         } else {
             if (i == 0) {
                 cd->name = strdup(x[i]);
