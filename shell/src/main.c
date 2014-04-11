@@ -27,10 +27,8 @@ static void exec_s() {
     if (jb != NULL) {
         execute(jb);
     } else {
-        if (is_interactive) {
-            fprintf(stderr, "\n%s\n", PARSE_ERROR_MESSAGE);
-            fflush(stderr);
-        }
+        fprintf(stdout, "\n%s\n", PARSE_ERROR_MESSAGE);
+        fflush(stdout);
     }
     s = (char*)malloc(sizeof(char));
     if (s == NULL) exit(3);

@@ -261,6 +261,7 @@ void init_shell(int argc, char ** argv) {
     if (buffer == NULL) exit(3);
     sprintf(buffer, "%d", argc);
     setvar("#", buffer);
+    if (errno == ENOMEM) exit_shell();
 
     for (i = 0; i < argc; i++) {
         buffer = (char*)malloc(10 * sizeof(char));
@@ -273,26 +274,30 @@ void init_shell(int argc, char ** argv) {
     if (buffer == NULL) exit(3);
     sprintf(buffer, "%d", getuid());
     setvar("UID", buffer);
+    if (errno == ENOMEM) exit_shell();
 
     buffer = (char*)malloc(10 * sizeof(char));
     if (buffer == NULL) exit(3);
     sprintf(buffer, "%d", getpid());
     setvar("PID", buffer);
+    if (errno == ENOMEM) exit_shell();
 
     buffer = (char*)malloc(40 * sizeof(char));
     if (buffer == NULL) exit(3);
     gethostname(buffer, 39);
-    errno = 0;
+    /*errno = 0;*/
     setvar("HOSTNAME", buffer);
+    if (errno == ENOMEM) exit_shell();
 
     buffer = (char*)malloc(202 * sizeof(char));
     memset(buffer, 0, sizeof(buffer));
     if (buffer == NULL) exit(3);
     n = readlink("/proc/self/exe", buffer, 200);
     buffer[n] = '\0';
-    if (errno == ENAMETOOLONG)
-        errno = 0;
+    /*if (errno == ENAMETOOLONG)
+        errno = 0;*/
     setvar("SHELL", buffer);
+    if (errno == ENOMEM) exit_shell();
     
 }
 
@@ -306,7 +311,7 @@ void setvar(char * name, char * val){
         }
     }
     increase((void**)&rvars, &rvars_sz, &rvars_rsz, sizeof(struct variable));
-    if (errno != 0) return;
+    if (errno == ENOMEM) return;
     rvars[rvars_n].name = name;
     rvars[rvars_n].value = val;
     rvars_n++;

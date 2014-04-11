@@ -78,11 +78,11 @@ char ** parseCTokens(char * x, int * sz) {
         if (push && !allspaces(x + ppos, i - ppos)) {
             /*if (allspaces(x + ppos, i - ppos)) continue;*/
             increase((void**)&res, &rsz, &r_rsz, sizeof(char *));
-            if (errno == 0) {
+            if (errno != ENOMEM) {
                 res[*sz] = truncate(strndup(x + ppos, i - ppos));
                 *sz += 1;
             }
-            if (errno != 0) {
+            if (errno == ENOMEM) {
                 for (j = 0; j < *sz; j++)
                     free(res[j]);
                 free(res);
@@ -100,7 +100,7 @@ char ** parseCTokens(char * x, int * sz) {
         }
     }
     truncate_mem((void**)&res, &rsz, &r_rsz);
-    if (errno != 0) {
+    if (errno == ENOMEM) {
         for (j = 0; j < *sz; j++)
             free(res[j]);
         free(res);
@@ -125,7 +125,7 @@ struct command * parse_command(char ** x, int n) {
     int i, tst;
     size_t cd_ss = sizeof(char*), cd_rs = sizeof(char*);
     struct command * cd = trymalloc(sizeof(struct command));
-    if (errno != 0) return NULL;
+    if (errno == ENOMEM) return NULL;
     cd->argc = 1;
     cd->args = malloc(sizeof(char*));
     if (cd->args == NULL) {
@@ -185,7 +185,7 @@ struct command * parse_command(char ** x, int n) {
                     tst = replace_vars(&cd->args[cd->argc]);
                     cd->argc += 1;
                 }
-                if (errno != 0 || tst != 0 || cd->args[cd->argc - 1] == NULL) {
+                if (errno == ENOMEM || tst != 0 || cd->args[cd->argc - 1] == NULL) {
                     free_command(cd);
                     return NULL;
                 }
@@ -194,7 +194,7 @@ struct command * parse_command(char ** x, int n) {
     }
     increase((void**)&(cd->args), &cd_ss, &cd_rs, sizeof(char*));
     truncate_mem((void**)&(cd->args), &cd_ss, &cd_rs);
-    if (errno != 0) {
+    if (errno == ENOMEM) {
         free_command(cd);
         return NULL;
     } else {
@@ -229,7 +229,7 @@ struct job * parse(char * x) {
         return NULL;
     }
     PARSE_ERROR_MESSAGE = "ok";
-    if (errno != 0) return NULL;
+    if (errno == ENOMEM) return NULL;
     for (i = -1; i < n; i++) {
         if (i == -1 || strcmp(tokens[i], "|") == 0) {
             for (j = i + 1; j < n && strcmp(tokens[j], "|") != 0 && strcmp(tokens[j], "&") != 0; j++);
@@ -239,7 +239,7 @@ struct job * parse(char * x) {
                 return NULL;
             }
             increase((void**)&(res->commands), &cds_ss, &cds_rs, sizeof(struct command *));
-            if (errno == 0) {
+            if (errno != ENOMEM) {
                 res->commands[res->commandsc] = parse_command(tokens + i + 1, j - i - 1);
                 if (res->commands[res->commandsc] == NULL) {
                     free_job(res);
@@ -264,7 +264,7 @@ struct job * parse(char * x) {
         free(tokens[i]);
     free(tokens);
     truncate_mem((void**)&res->commands, &cds_ss, &cds_rs);
-    if (errno != 0) {
+    if (errno == ENOMEM) {
         free_job(res);
         return NULL;
     }
@@ -304,7 +304,7 @@ static int type(char x) {
 }
 
 static bool isChar(char x) {
-    return x != '\"' && x != '\'' && x != '}' && x != '{' && x != '$' && x != '\\';
+    return x != '\"' && x != '\'' && x != '}' && x != '{' && x != '$' && x != '\\' && x != '_';
 }
 
 int replace_vars(char ** x) {
@@ -406,7 +406,7 @@ int replace_vars(char ** x) {
     }
     /*push_back(&ans, &anssz, &ansrsz, '\0');*/
     truncate_mem((void**)&ans, &anssz, &ansrsz);
-    if (errno != 0) {
+    if (errno == ENOMEM) {
         free(ans);
         return -1;
     }
