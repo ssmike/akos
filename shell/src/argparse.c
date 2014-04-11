@@ -319,6 +319,7 @@ int replace_vars(char ** x) {
         errno = ENOMEM;
         return -1;
     }
+    ans[0] = '\0';
     for (i = 0; i < n; i++) {
         if (slash) {
             push_back(&ans, &anssz, &ansrsz, (*x)[i]);
