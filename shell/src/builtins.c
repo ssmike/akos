@@ -15,13 +15,83 @@
 #include <string.h>
 #include <limits.h>
 #include <sys/wait.h>
+#include <getss.h>
+#include <memmove.h>
+#include <stdlib.h>
 
 int jobs(struct command * t);
 int pwd(struct command * t);
+int mcat(struct command * t);
+int msort(struct command * t);
 
-char * builtin_names[builtins_n] = {"jobs", "pwd"};
-builtin functions[builtins_n] = {&jobs, &pwd};
+char * builtin_names[builtins_n] = {"jobs", "pwd", "mcat", "msort"};
+builtin functions[builtins_n] = {&jobs, &pwd, &mcat, &msort};
 
+int mcat(struct command * t) {
+    char c; 
+    FILE * fin = stdin;
+    if (t->argc > 2) return 2;
+    if (t->argc > 1) {
+        fin = fopen(t->args[1], "r");
+        if (fin == NULL) return 2;
+    }
+    while ((c = fgetc(fin)) != EOF) {
+        fputc(c, stdout);
+    }
+    return 0;
+}
+
+int strcmpv(const void * a, const void * b) {
+    return strcmp((char *) a, (char * ) b);
+}
+
+int msort(struct command * t) {
+    char ** lines = NULL;
+    size_t lsz = 0, lrsz = 0;
+    bool reversed = false;
+    bool unique = false;
+    FILE * fin = stdin;
+    int i;
+    for (i = 1; i < t->argc; i++) {
+        if (strcmp(t->args[i], "-d") == 0) {
+            reversed = true;
+        } else
+        if (strcmp(t->args[i], "-u") == 0) {
+            unique = true;
+        } else {
+            fin = fopen(t->args[i], "r");
+        }
+    }
+    while (!feof(stdin)) {
+        char * ss;
+        if (fgetss(fin, &ss) < 0)
+            return 2;
+        if (ss == NULL) break;
+        increase((void*)&lines, &lsz, &lrsz, sizeof(char *));
+        lines[lsz/sizeof(char*) - 1] = ss;
+        if (errno == ENOMEM)
+            return 2;
+    }
+    qsort((void*)lines, lsz / sizeof(char *), sizeof(char*), strcmpv);
+    if (reversed) {
+        int i = 0, j = lsz / sizeof(char *) - 1;
+        while (i < j) {
+            char * z = lines[i];
+            lines[i] = lines[j];
+            lines[j] = z;
+            i++; j--;
+        }
+    }
+    for (i = 0; i < lsz / sizeof(char *); i++) {
+        if (!unique || i == 0 || strcmp(lines[i], lines[i - 1]) != 0) {
+            lines[i][strlen(lines[i]) - 1] = '\0';
+            if (strlen(lines[i]) != 0)
+                puts(lines[i]);
+        }
+    }
+    fflush(stdout);
+    return 0;
+}
 
 int jobs(struct command * t) {
     int i;

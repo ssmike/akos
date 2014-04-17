@@ -1,7 +1,7 @@
 #ifndef BUILTINS_H
 #define BUILTINS_H
 
-#define builtins_n 2
+#define builtins_n 4
 #include <shell_structs.h>
 
 typedef int (*builtin)(struct command *);

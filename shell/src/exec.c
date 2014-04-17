@@ -114,7 +114,6 @@ static pid_t execute_job(struct job * jb) {
     pid_t ctl_pgrp = -1;
     int pp[2];
     {
-        if (debug) fprintf(stderr, "controller pid - %d\ncommand output------------------\n", getpid());
         res = 0;
         for (i = 0; i < jb->commandsc; i++) {
             if (i != jb->commandsc - 1) {
@@ -156,6 +155,7 @@ static pid_t execute_job(struct job * jb) {
                 close(pinp);
             pinp = pp[0];
         }
+        if (debug) fprintf(stderr, "group - %d\ncommand output------------------\n", ctl_pgrp);
     }
     if (is_interactive && !jb->background)
         tcsetpgrp(tty_fd, ctl_pgrp);
