@@ -304,7 +304,7 @@ static int type(char x) {
 }
 
 static bool isChar(char x) {
-    return x != '\"' && x != '\'' && x != '}' && x != '{' && x != '$' && x != '\\' && x != '_';
+    return x != '\"' && x != '\'' && x != '}' && x != '{' && x != '$' && x != '\\';
 }
 
 int replace_vars(char ** x) {
