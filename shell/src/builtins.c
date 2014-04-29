@@ -42,7 +42,7 @@ int mcat(struct command * t) {
 }
 
 int strcmpv(const void * a, const void * b) {
-    return strcmp((char *) a, (char * ) b);
+    return strcmp(*((char **) a), *((char **) b));
 }
 
 int msort(struct command * t) {
