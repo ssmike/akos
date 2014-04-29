@@ -32,3 +32,4 @@ vimrc:
 %:
 	mkdir -p $@
 
+.PHONY: clean
