@@ -3,6 +3,7 @@
 #include <unistd.h>
 #include <string.h>
 #include <stdbool.h>
+#include <stdlib.h>
 
 int main() {
     char * or;
@@ -36,4 +37,9 @@ int main() {
             i++;
         }
     }
+    
+    free(or);
+    free(pt);
+    free(tar);
+    return 0;
 }
