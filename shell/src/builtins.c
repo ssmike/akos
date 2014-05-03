@@ -23,9 +23,10 @@ int jobs(struct command * t);
 int pwd(struct command * t);
 int mcat(struct command * t);
 int msort(struct command * t);
+int msed(struct command * t);
 
-char * builtin_names[builtins_n] = {"jobs", "pwd", "mcat", "msort"};
-builtin functions[builtins_n] = {&jobs, &pwd, &mcat, &msort};
+char * builtin_names[builtins_n] = {"jobs", "pwd", "mcat", "msort", "msed"};
+builtin functions[builtins_n] = {&jobs, &pwd, &mcat, &msort, &msed};
 
 int mcat(struct command * t) {
     char c; 
@@ -91,6 +92,40 @@ int msort(struct command * t) {
     }
     fflush(stdout);
     return 0;
+}
+
+int msed(struct command * t) {
+    char * or;
+    char * pt;
+    char * tar;
+    int orl, ptl;
+    int i, j;
+    if (!getss(&or) || !getss(&pt) || !getss(&tar)) {
+        fprintf(stderr, "Weird error");
+        return 1;
+    }
+    orl = strlen(or);
+    ptl = strlen(pt);
+    for (i = 0; i < orl;) {
+        bool fl = true;
+        if (i + ptl > orl)
+            fl = false;
+        else {
+            for (j = 0; j < ptl; j++) {
+                if (pt[j] != or[i + j]) {
+                    fl = false;
+                    break;
+                }
+            }
+        }
+        if (fl) {
+            fprintf(stdout, "%s", tar);
+            i += ptl;
+        } else {
+            fprintf(stdout, "%c", or[i]);
+            i++;
+        }
+    }
 }
 
 int jobs(struct command * t) {
