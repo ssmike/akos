@@ -105,30 +105,32 @@ int msed(struct command * t) {
     }
     pt = t->args[1];
     tar = t->args[2];
-    if (!getss(&or) ) {
-        fprintf(stderr, "Weird error");
-        return 1;
-    }
-    orl = strlen(or);
-    ptl = strlen(pt);
-    for (i = 0; i < orl;) {
-        bool fl = true;
-        if (i + ptl > orl)
-            fl = false;
-        else {
-            for (j = 0; j < ptl; j++) {
-                if (pt[j] != or[i + j]) {
-                    fl = false;
-                    break;
+    while (!feof(stdin)) {
+        if (!getss(&or) ) {
+            fprintf(stderr, "Weird error");
+            return 1;
+        }
+        orl = strlen(or);
+        ptl = strlen(pt);
+        for (i = 0; i < orl;) {
+            bool fl = true;
+            if (i + ptl > orl)
+                fl = false;
+            else {
+                for (j = 0; j < ptl; j++) {
+                    if (pt[j] != or[i + j]) {
+                        fl = false;
+                        break;
+                    }
                 }
             }
-        }
-        if (fl) {
-            fprintf(stdout, "%s", tar);
-            i += ptl;
-        } else {
-            fprintf(stdout, "%c", or[i]);
-            i++;
+            if (fl) {
+                fprintf(stdout, "%s", tar);
+                i += ptl;
+            } else {
+                fprintf(stdout, "%c", or[i]);
+                i++;
+            }
         }
     }
     return 0;
