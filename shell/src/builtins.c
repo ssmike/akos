@@ -100,7 +100,12 @@ int msed(struct command * t) {
     char * tar;
     int orl, ptl;
     int i, j;
-    if (!getss(&or) || !getss(&pt) || !getss(&tar)) {
+    if (t->argc != 3) {
+        return 2;
+    }
+    pt = t->args[1];
+    tar = t->args[2];
+    if (!getss(&or) ) {
         fprintf(stderr, "Weird error");
         return 1;
     }
@@ -126,6 +131,7 @@ int msed(struct command * t) {
             i++;
         }
     }
+    return 0;
 }
 
 int jobs(struct command * t) {
