@@ -4,6 +4,7 @@
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <stdbool.h>
 
 /*
  * if arg1 arg2 arg3 | arg4 arg5 arg6 | wc ; then
@@ -23,6 +24,10 @@ void closeall() {
     close(fd0[1]);
     close(fd1[0]);
     close(fd1[1]);
+}
+
+bool checkStatus(int s) {
+    return WIFEXITED(s) && WEXITSTATUS(s) == 0;
 }
 
 int main(int argc, char ** argv) {
@@ -51,7 +56,7 @@ int main(int argc, char ** argv) {
     wait(&st1);
     wait(&st2);
     wait(&st3);
-    if (st1 != 0 || st2 != 0 || st3 != 0) {
+    if (checkStatus(st1) || checkStatus(st2) || checkStatus(st3)) {
         fprintf(stderr, "error");
         return 0;
     }
