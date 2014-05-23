@@ -43,6 +43,7 @@ static bool allspaces(char * x, int n) {
 static int qtype(char x) {
     if (x == '\'') return 1;
     if (x == '\"') return 2;
+    return 3;
 }
 
 char ** parseCTokens(char * x, int * sz) {
@@ -64,9 +65,10 @@ char ** parseCTokens(char * x, int * sz) {
         }
         /*tasks delimiters*/
         if (!c_slsh && !qts && x[i] == '|') push = true;
-        if (!pr_slsh && !qts && i > 0 && x[i - 1] == '|') push = true;
+        if (!pr_slsh && ((!qts && !quotes(x[i])) || (qts && quotes(x[i])))
+                        && i > 0 && x[i - 1] == '|') push = true;
         /*redirections*/
-        if (!pr_slsh && !qts && i != 0 && bracket(x[i - 1]) && !bracket(x[i])) push = true;
+        if (!pr_slsh && i != 0 && bracket(x[i - 1]) && !bracket(x[i])) push = true;
         if (!c_slsh && !qts && i != 0 && bracket(x[i]) && !bracket(x[i - 1])) push = true;
         if (!c_slsh && i == n) push = true;
         /*spaces*/
