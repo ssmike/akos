@@ -1,11 +1,13 @@
 INCLUDE+=-I$(CURDIR)/include
-CFLAGS+=-g -pedantic $(INCLUDE)
-LDFLAGS+=
+ARCH=$(shell arch)
+CFLAGS+=-g -pedantic -pthread -g $(INCLUDE)
+LDFLAGS+=-lc -lpthread -e main -A $(ARCH)
 CFILES=$(wildcard src/*.c)
 OBJECTS=$(patsubst src/%,bin/%,$(CFILES:.c=.o))
+LD=gcc
 
 dist/main: bin dist $(OBJECTS)
-	$(CC) $(OBJECTS) -o dist/main  $(LDFLAGS)
+	$(LD) $(OBJECTS) -o dist/main  $(LDFLAGS)
 
 bin/%.o : src/%.c $(wildcard include/*.h)
 	$(CC) -c $< -o $@ $(CFLAGS)
@@ -30,5 +32,7 @@ vimrc:
 	cp .mk include/Makefile
 %:
 	mkdir -p $@
+
+.DEFAULT_GOAL: dist/main
 
 .PHONY: clean
